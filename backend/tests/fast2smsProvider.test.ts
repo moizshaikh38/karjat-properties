@@ -84,11 +84,9 @@ describe('Fast2SMSProvider', () => {
         '/dev/whatsapp-session?phone_number_id=phone-num-id-999&to=919876543210',
         {
           type: 'document',
-          document: {
-            link: 'https://karjatproperties.com/brochures/villa-101.pdf',
-            caption: 'Green Valley Villa Brochure',
-            filename: 'Green_Valley_Brochure.pdf',
-          },
+          url: 'https://karjatproperties.com/brochures/villa-101.pdf',
+          text: 'Green Valley Villa Brochure',
+          filename: 'Green_Valley_Brochure.pdf',
         }
       );
 
@@ -110,10 +108,8 @@ describe('Fast2SMSProvider', () => {
         '/dev/whatsapp-session?phone_number_id=phone-num-id-999&to=919876543210',
         {
           type: 'image',
-          image: {
-            link: 'https://karjatproperties.com/images/villa-pool.jpg',
-            caption: 'Private Pool View',
-          },
+          url: 'https://karjatproperties.com/images/villa-pool.jpg',
+          text: 'Private Pool View',
         }
       );
 

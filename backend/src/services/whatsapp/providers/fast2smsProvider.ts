@@ -177,12 +177,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
       ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
       : `/dev/whatsapp-session`;
 
-    const payload = {
+    const payload: any = {
       type: 'image',
-      image: {
-        link: url,
-        ...(caption && { caption }),
-      },
+      url,
+      ...(caption && { text: caption }),
     };
     return this.executeRequest(endpoint, payload);
   }
@@ -193,13 +191,11 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
       ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
       : `/dev/whatsapp-session`;
 
-    const payload = {
+    const payload: any = {
       type: 'document',
-      document: {
-        link: url,
-        ...(caption && { caption }),
-        ...(filename && { filename }),
-      },
+      url,
+      ...(caption && { text: caption }),
+      ...(filename && { filename }),
     };
     return this.executeRequest(endpoint, payload);
   }
@@ -210,12 +206,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
       ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
       : `/dev/whatsapp-session`;
 
-    const payload = {
+    const payload: any = {
       type: 'video',
-      video: {
-        link: url,
-        ...(caption && { caption }),
-      },
+      url,
+      ...(caption && { text: caption }),
     };
     return this.executeRequest(endpoint, payload);
   }
@@ -226,11 +220,9 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
       ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
       : `/dev/whatsapp-session`;
 
-    const payload = {
+    const payload: any = {
       type: 'audio',
-      audio: {
-        link: url,
-      },
+      url,
     };
     return this.executeRequest(endpoint, payload);
   }
