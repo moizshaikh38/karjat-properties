@@ -424,7 +424,7 @@ export default function Leads() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Property Type</label>
               <select
@@ -432,10 +432,26 @@ export default function Leads() {
                 onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
                 className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               >
-                <option value="villa">Villa / Bungalow</option>
-                <option value="plot">NA Plot / Land</option>
+                <option value="villa">Luxury Villa / Bungalow</option>
+                <option value="plot">Sanctioned NA Plot (Guntha / Acre)</option>
                 <option value="farmhouse">Farmhouse Estate</option>
                 <option value="apartment">Apartment</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Preferred BHK / Size</label>
+              <select
+                value={formData.preferred_bhk}
+                onChange={(e) => setFormData({ ...formData, preferred_bhk: e.target.value })}
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+              >
+                <option value="1">1 BHK</option>
+                <option value="2">2 BHK</option>
+                <option value="3">3 BHK</option>
+                <option value="4">4+ BHK Villa</option>
+                <option value="5">5 to 10 Guntha Plot</option>
+                <option value="10">10 to 20 Guntha Plot</option>
+                <option value="40">1 to 5 Acres Land</option>
               </select>
             </div>
             <div>
@@ -445,7 +461,7 @@ export default function Leads() {
                 value={formData.max_budget}
                 onChange={(e) => setFormData({ ...formData, max_budget: e.target.value })}
                 placeholder="10000000"
-                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
               />
             </div>
           </div>
