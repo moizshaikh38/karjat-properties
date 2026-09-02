@@ -23,9 +23,9 @@ export const CommandPalette: React.FC = () => {
   const pages = [
     { id: 'nav-dashboard', type: 'page' as const, title: 'Overview Dashboard', url: '/dashboard' },
     { id: 'nav-inbox', type: 'page' as const, title: 'WhatsApp Live Inbox', url: '/inbox' },
+    { id: 'nav-properties', type: 'page' as const, title: 'Properties Catalog', url: '/properties' },
     { id: 'nav-leads', type: 'page' as const, title: 'Buyer Leads Database', url: '/leads' },
     { id: 'nav-pipeline', type: 'page' as const, title: 'Sales Pipeline (Kanban)', url: '/pipeline' },
-    { id: 'nav-properties', type: 'page' as const, title: 'Property Inventory Catalog', url: '/properties' },
     { id: 'nav-site-visits', type: 'page' as const, title: 'Site Visit Coordinator', url: '/site-visits' },
     { id: 'nav-follow-ups', type: 'page' as const, title: 'Follow-up Sequences', url: '/followups' },
     { id: 'nav-campaigns', type: 'page' as const, title: 'WhatsApp Campaigns', url: '/campaigns' },

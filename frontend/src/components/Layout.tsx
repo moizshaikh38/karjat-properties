@@ -152,10 +152,10 @@ export const Layout: React.FC = () => {
           <NavSection title="Operations" collapsed={collapsed}>
             <NavItem to="/dashboard" icon={LayoutDashboard} label="Overview" collapsed={collapsed} />
             <NavItem to="/inbox" icon={Inbox} label="Inbox" badge={3} collapsed={collapsed} />
+            <NavItem to="/properties" icon={Building2} label="Properties" collapsed={collapsed} />
             <NavItem to="/leads" icon={Users} label="Leads" collapsed={collapsed} />
             <NavItem to="/pipeline" icon={Layers} label="Pipeline" collapsed={collapsed} />
             <NavItem to="/site-visits" icon={Calendar} label="Site Visits" collapsed={collapsed} />
-            <NavItem to="/properties" icon={Building2} label="Inventory" collapsed={collapsed} />
           </NavSection>
 
           <NavSection title="Engagement" collapsed={collapsed}>
@@ -265,18 +265,18 @@ export const Layout: React.FC = () => {
           <span className="text-[10px] mt-0.5">Inbox</span>
         </NavLink>
         <NavLink 
+          to="/properties" 
+          className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
+        >
+          <Building2 className="h-4 w-4" />
+          <span className="text-[10px] mt-0.5">Properties</span>
+        </NavLink>
+        <NavLink 
           to="/leads" 
           className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
           <Users className="h-4 w-4" />
           <span className="text-[10px] mt-0.5">Leads</span>
-        </NavLink>
-        <NavLink 
-          to="/site-visits" 
-          className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
-        >
-          <Calendar className="h-4 w-4" />
-          <span className="text-[10px] mt-0.5">Visits</span>
         </NavLink>
         <button 
           onClick={() => setMobileMenuOpen(true)}
@@ -311,10 +311,10 @@ export const Layout: React.FC = () => {
               <NavSection title="Operations" collapsed={false}>
                 <NavItem to="/dashboard" icon={LayoutDashboard} label="Overview" collapsed={false} onClick={() => setMobileMenuOpen(false)} />
                 <NavItem to="/inbox" icon={Inbox} label="Inbox" badge={3} collapsed={false} onClick={() => setMobileMenuOpen(false)} />
+                <NavItem to="/properties" icon={Building2} label="Properties" collapsed={false} onClick={() => setMobileMenuOpen(false)} />
                 <NavItem to="/leads" icon={Users} label="Leads" collapsed={false} onClick={() => setMobileMenuOpen(false)} />
                 <NavItem to="/pipeline" icon={Layers} label="Pipeline" collapsed={false} onClick={() => setMobileMenuOpen(false)} />
                 <NavItem to="/site-visits" icon={Calendar} label="Site Visits" collapsed={false} onClick={() => setMobileMenuOpen(false)} />
-                <NavItem to="/properties" icon={Building2} label="Inventory" collapsed={false} onClick={() => setMobileMenuOpen(false)} />
               </NavSection>
 
               <NavSection title="Engagement" collapsed={false}>
