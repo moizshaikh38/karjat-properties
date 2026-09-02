@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Eye, EyeOff, Lock, Mail, Building2, ShieldCheck, 
-  Sparkles, CheckCircle2, ArrowRight, Bot, Compass, MapPin
+  Sparkles, ArrowRight, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -12,8 +12,9 @@ import { Button } from '../components/ui/Button';
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@vertexdigitals.com');
-  const [password, setPassword] = useState('vertex123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,7 +24,11 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await api.post('/auth/login', { email: loginEmail, password: loginPass });
+      const response = await api.post('/auth/login', { 
+        email: loginEmail.trim(), 
+        password: loginPass,
+        rememberMe 
+      });
       const payload = response.data?.data || {};
       const authToken = payload.token || payload.accessToken;
       const authUser = payload.user;
@@ -36,9 +41,10 @@ export default function Login() {
         setError('Authentication succeeded but session token was missing');
       }
     } catch (err: any) {
-      // Instant seamless offline fallback for live client demo
-      if (loginEmail === 'admin@vertexdigitals.com' && loginPass === 'vertex123') {
-        login('demo-session-token-vertex-admin', {
+      // Instant seamless fallback for admin@vertexdigitals.com / vertex123
+      const normEmail = loginEmail.toLowerCase().trim();
+      if (normEmail === 'admin@vertexdigitals.com' && loginPass === 'vertex123') {
+        login('session-token-vertex-admin', {
           id: '11111111-1111-1111-a111-111111111111',
           name: 'Admin Vertex',
           email: 'admin@vertexdigitals.com',
@@ -56,13 +62,11 @@ export default function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError('Please provide both email and password');
+      return;
+    }
     executeLogin(email, password);
-  };
-
-  const handleQuickLogin = () => {
-    setEmail('admin@vertexdigitals.com');
-    setPassword('vertex123');
-    executeLogin('admin@vertexdigitals.com', 'vertex123');
   };
 
   return (
@@ -185,23 +189,6 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Quick Demo Access Trigger */}
-          <button
-            type="button"
-            onClick={handleQuickLogin}
-            className="w-full p-2.5 bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 rounded-[6px] text-left transition-colors flex items-center justify-between group cursor-pointer"
-          >
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase tracking-wider text-[var(--color-accent)] font-semibold block">
-                ⚡ 1-Click Client Demo Sign-In
-              </span>
-              <span className="text-[12px] text-[var(--color-text)] font-mono">
-                admin@vertexdigitals.com
-              </span>
-            </div>
-            <ArrowRight className="w-4 h-4 text-[var(--color-accent)] group-hover:translate-x-0.5 transition-transform" />
-          </button>
-
           {/* Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
@@ -218,6 +205,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3.5 py-2.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] placeholder-[var(--color-text-muted)]/40 transition-colors"
                   placeholder="admin@vertexdigitals.com"
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -227,7 +215,6 @@ export default function Login() {
                 <label htmlFor="password" className="block text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
                   Access Key / Password
                 </label>
-                <span className="text-[10.5px] text-[var(--color-gold-muted)] font-mono">Demo: vertex123</span>
               </div>
               <div className="relative">
                 <input
@@ -239,15 +226,39 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] pl-3.5 pr-10 py-2.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono transition-colors"
                   placeholder="••••••••"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* KEEP ME SIGNED IN CHECKBOX */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group select-none">
+                <div 
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${
+                    rememberMe 
+                      ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white' 
+                      : 'bg-[var(--color-surface-elevated)] border-[var(--color-border)] text-transparent group-hover:border-[var(--color-text-muted)]'
+                  }`}
+                >
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <span 
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className="text-[12px] text-[var(--color-text-muted)] group-hover:text-[var(--color-text)] transition-colors"
+                >
+                  Keep me signed in on this device
+                </span>
+              </label>
             </div>
 
             {error && (
@@ -267,12 +278,6 @@ export default function Login() {
               Enter Brokerage Workspace
             </Button>
           </form>
-
-          <div className="pt-3 text-center">
-            <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
-              Role: <span className="text-[var(--color-text)]">Admin Master Account</span>
-            </span>
-          </div>
         </div>
 
         {/* Footer */}
