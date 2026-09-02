@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bot, User, Clock, MessageSquare, Plus } from 'lucide-react';
+import { Search, Bot, User, Clock, MessageSquare, Plus, Sparkles } from 'lucide-react';
 import api from '../services/api';
 import { Conversation, Lead } from '../types';
 import ChatWindow from '../components/ChatWindow';
@@ -12,16 +12,30 @@ import { DEMO_CONVERSATIONS } from '../data/demoData';
 export default function Inbox() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(DEMO_CONVERSATIONS as any);
   const [filter, setFilter] = useState<'all' | 'ai' | 'human' | 'paused'>('all');
   const [search, setSearch] = useState('');
   
   const fetchConversations = async () => {
     try {
-      const res = await api.get('/conversations');
+      const res = await api.get('/conversations').catch(() => ({ data: { data: [] } }));
       const raw = res.data?.data;
-      const list = Array.isArray(raw) ? raw : raw?.conversations || [];
-      setConversations(list.length > 0 ? list : DEMO_CONVERSATIONS as any);
+      const dbList = Array.isArray(raw) ? raw : raw?.conversations || [];
+      
+      // Filter out raw test/junk records and keep authentic conversations
+      const validDbList = dbList.filter((c: any) => 
+        c.whatsapp_phone && 
+        c.lead?.name && 
+        !c.whatsapp_phone.includes('1234567890') &&
+        !c.id.includes('raw_test')
+      );
+
+      // Merge DEMO_CONVERSATIONS with any valid real user incoming conversations
+      const mergedMap = new Map();
+      DEMO_CONVERSATIONS.forEach(c => mergedMap.set(c.id, c));
+      validDbList.forEach((c: any) => mergedMap.set(c.id, c));
+      
+      setConversations(Array.from(mergedMap.values()));
     } catch (err) {
       setConversations(DEMO_CONVERSATIONS as any);
     }
@@ -43,18 +57,28 @@ export default function Inbox() {
 
   const isMobile = window.innerWidth < 768;
   const isConversationSelected = location.pathname.includes('/inbox/');
-  const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? '');
+  const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? 'conv-1');
+
+  // If no conversation in URL, navigate to the first conversation
+  useEffect(() => {
+    if (!location.pathname.split('/inbox/')[1] && filteredConversations[0]?.id) {
+      navigate(`/inbox/${filteredConversations[0].id}`, { replace: true });
+    }
+  }, [location.pathname, filteredConversations]);
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] bg-[var(--color-bg)] overflow-hidden">
+    <div className="flex h-[calc(100vh-3rem)] bg-[var(--color-bg)] overflow-hidden animate-entrance">
       
-      {/* LEFT PANE - High Density Conversation List (320px) */}
+      {/* LEFT PANE - High Density WhatsApp Conversation List (320px) */}
       <div className={`w-full md:w-80 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col ${isMobile && isConversationSelected ? 'hidden' : 'block'}`}>
         
         {/* Search & Filter Header */}
         <div className="p-3 border-b border-[var(--color-border)] space-y-2.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Threads</h2>
+            <div className="flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-[var(--color-accent)]" />
+              <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Threads</h2>
+            </div>
             <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
               {filteredConversations.length} Active
             </span>
@@ -71,7 +95,7 @@ export default function Inbox() {
             />
           </div>
 
-          {/* Clean Segmented Filters */}
+          {/* Segmented Filter Pills */}
           <div className="grid grid-cols-4 gap-1 p-0.5 bg-[var(--color-surface-elevated)] rounded-[6px] border border-[var(--color-border)]">
             {(['all', 'ai', 'human', 'paused'] as const).map(f => (
               <button
@@ -97,10 +121,11 @@ export default function Inbox() {
             </div>
           ) : (
             filteredConversations.map(conv => {
-              const lead: Partial<Lead> = conv.lead || {};
+              const lead: any = conv.lead || {};
               const isSelected = currentConvId === conv.id;
               const isHot = lead.classification === 'HOT' || lead.temperature === 'HOT';
               const isWarm = lead.classification === 'WARM' || lead.temperature === 'WARM';
+              const lastMsg = (conv as any).messages?.[(conv as any).messages.length - 1];
 
               return (
                 <div 
@@ -119,23 +144,27 @@ export default function Inbox() {
                     <span className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap font-mono tabular-nums">
                       {conv.last_message_at 
                         ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: false }) 
-                        : 'New'}
+                        : 'Just now'}
                     </span>
                   </div>
+
+                  <p className="text-[11.5px] text-[var(--color-text-muted)] line-clamp-1 mb-1.5 italic">
+                    "{lastMsg?.text_content || 'Inquiring about Karjat properties'}"
+                  </p>
 
                   <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] font-mono">
                     <span>{conv.whatsapp_phone}</span>
                     <Badge variant={isHot ? 'hot' : isWarm ? 'warm' : 'cold'} size="sm">
-                      {isHot ? 'Hot' : isWarm ? 'Warm' : 'Cold'}
+                      {isHot ? 'Hot Lead' : isWarm ? 'Warm' : 'Cold'}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[var(--color-border)]/40 text-[10px] text-[var(--color-text-muted)]">
-                    <span className="truncate max-w-[170px]">
-                      {lead.preferred_bhk ? `${lead.preferred_bhk} Villa` : 'Karjat Inquirer'}
+                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[var(--color-border)]/40 text-[10.5px] text-[var(--color-text-muted)]">
+                    <span className="truncate max-w-[170px] text-[var(--color-accent)] font-medium">
+                      {lead.preferred_bhk ? `${lead.preferred_bhk} · ${lead.property_type || 'Villa'}` : 'Karjat Inquirer'}
                     </span>
                     <span className="font-medium">
-                      {conv.mode === 'human' ? '👤 Human' : '🤖 AI'}
+                      {conv.mode === 'human' ? '👤 Human' : '🤖 AI Active'}
                     </span>
                   </div>
                 </div>
