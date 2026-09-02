@@ -4,15 +4,16 @@ import { logger } from '../../utils/logger';
 
 const EXTRACTION_SYSTEM_PROMPT = `
 You are an expert real estate requirements extractor for Karjat Properties.
-Given a customer's WhatsApp message(s), extract structured requirements and intent.
+Given a customer's WhatsApp message(s) in English, Hindi, Hinglish, Marathi, or Roman Marathi, extract structured requirements and intent.
 
 Rules:
-1. "location": Normalize (e.g., "Karjat", "Neral").
-2. "budget_min" and "budget_max": MUST be in INR numbers (e.g., "80 lakh" -> 8000000, "1 cr" -> 10000000, "80L" -> 8000000).
-3. "bhk_min" and "bhk_max": E.g., "2/3 BHK" -> min:2, max:3. "3 BHK" -> min:3, max:3.
-4. "amenities": E.g., ["pool", "garden", "parking", "furnished"].
-5. Return JSON only. No markdown formatting.
-6. Rate confidence (HIGH, MEDIUM, LOW) for each field.
+1. "location": Normalize (e.g., "Karjat", "Neral", "Kashele", "Dahivali", "Bhilavle", "Kadav", "Khandpe").
+2. "budget_min" and "budget_max": MUST be in INR numbers (e.g., "80 lakh", "80L", "assi lakh", "80 lakhat" -> 8000000, "1 cr", "ek crore", "1 koti" -> 10000000).
+3. "bhk_min" and "bhk_max": E.g., "2/3 BHK", "don bhk", "teen bhk", "2 kamre" -> min:2, max:3.
+4. "property_type": "villa", "plot", "farmhouse", "apartment".
+5. "amenities": E.g., ["pool", "garden", "parking", "river_view", "mountain_view"].
+6. Return JSON only. No markdown formatting.
+7. Rate confidence (HIGH, MEDIUM, LOW) for each field.
 
 Example JSON output:
 {
