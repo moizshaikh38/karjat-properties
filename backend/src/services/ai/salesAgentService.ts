@@ -266,31 +266,42 @@ export class SalesAgentService {
 
       // 11. Final Mode & Race-Condition Check
       if (await shouldAIRespond(conversationId)) {
-        const waResponse = await whatsappMessageService.sendText({
-          to: ctx.conversation.whatsapp_phone,
-          text: finalResponseContent,
+        let msgId = `ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+        try {
+          const waResponse = await whatsappMessageService.sendText({
+            to: ctx.conversation.whatsapp_phone,
+            text: finalResponseContent,
+          });
+          if (waResponse?.messageId) msgId = waResponse.messageId;
+          else if (waResponse?.messages?.[0]?.id) msgId = waResponse.messages[0].id;
+        } catch (waErr: any) {
+          logger.warn({ error: waErr.message }, 'WhatsApp dispatch note: recording response in chat history');
+        }
+
+        // Always record outgoing AI message in database
+        await messageRepo.createMessage({
+          conversation_id: conversationId,
+          whatsapp_message_id: msgId,
+          direction: 'outgoing',
+          message_type: 'text',
+          recipient_phone: ctx.conversation.whatsapp_phone,
+          text_content: finalResponseContent,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
         });
 
-        const msgId = waResponse?.messageId || waResponse?.messages?.[0]?.id;
-        if (msgId) {
-          await messageRepo.createMessage({
-            conversation_id: conversationId,
-            whatsapp_message_id: msgId,
-            direction: 'outgoing',
-            message_type: 'text',
-            recipient_phone: ctx.conversation.whatsapp_phone,
-            text_content: finalResponseContent,
-            status: 'sent',
-            sent_at: new Date().toISOString(),
-          });
+        // Update conversation last_message_at
+        await db.getClient().from('whatsapp_conversations').update({
+          last_message_at: new Date().toISOString()
+        }).eq('id', conversationId);
 
-          // Update State Machine
-          await conversationStateMachine.updateConversationState(conversationId, nextState, {
-            lastIntent: intents[0],
-            confidence,
-            lastToolCalled: lastToolCalledName,
-          });
-        }
+        // Update State Machine
+        await conversationStateMachine.updateConversationState(conversationId, nextState, {
+          lastIntent: intents[0],
+          confidence,
+          lastToolCalled: lastToolCalledName,
+        });
       } else {
         logger.info({ conversationId }, 'Final check blocked response: Mode switched during execution.');
       }

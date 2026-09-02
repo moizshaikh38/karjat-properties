@@ -38,7 +38,7 @@ export const buildFullContext = async (conversationId: string) => {
 
   // 4. Load Property Interactions (Recent)
   const interRes = conv.lead_id ? await client.from('property_interactions')
-    .select('interaction_type, property:properties(name)')
+    .select('interaction_type, property_id')
     .eq('lead_id', conv.lead_id)
     .order('created_at', { ascending: false })
     .limit(10) : null;

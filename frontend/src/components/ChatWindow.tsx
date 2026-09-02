@@ -246,39 +246,38 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
 
       {/* AI BOT ACTIVE STATUS BAR */}
       {isAiMode && (
-        <div className="bg-purple-50 dark:bg-purple-950/40 px-4 py-2.5 text-center text-xs font-semibold text-purple-700 dark:text-purple-300 flex items-center justify-center gap-2 border-t border-purple-100 dark:border-purple-900/40 flex-shrink-0">
-          <Bot className="w-4 h-4 text-purple-600 animate-bounce" /> 
-          <span>AI Sales Bot is actively negotiating & answering buyer queries</span>
+        <div className="bg-purple-50 dark:bg-purple-950/40 px-4 py-2 text-center text-xs font-semibold text-purple-700 dark:text-purple-300 flex items-center justify-center gap-2 border-t border-purple-100 dark:border-purple-900/40 flex-shrink-0">
+          <Bot className="w-3.5 h-3.5 text-purple-600 animate-pulse" /> 
+          <span>AI Autonomous Mode Active (Staff can type & send manual messages anytime)</span>
         </div>
       )}
 
-      {/* HUMAN COMPOSER */}
-      {isHumanMode && (
-        <div className="p-3 bg-[var(--color-surface)] border-t border-[var(--color-border)] flex-shrink-0">
-          <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
-            <textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder="Type a WhatsApp reply... (Shift+Enter for newline)"
-              className="flex-1 max-h-32 min-h-[44px] bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
-              rows={1}
-            />
-            <button 
-              type="submit" 
-              disabled={sending || !inputText.trim()}
-              className="h-11 w-11 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-xl hover:opacity-90 disabled:opacity-50 flex-shrink-0 transition-opacity shadow-xs"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-      )}
+      {/* UNIVERSAL MESSAGE COMPOSER (Enabled in all modes) */}
+      <div className="p-3 bg-[var(--color-surface)] border-t border-[var(--color-border)] flex-shrink-0">
+        <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder={isAiMode ? "Type a message (sent directly from staff)... (Shift+Enter for newline)" : "Type a WhatsApp reply... (Shift+Enter for newline)"}
+            className="flex-1 max-h-32 min-h-[44px] bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+            rows={1}
+          />
+          <button 
+            type="submit" 
+            disabled={sending || !inputText.trim()}
+            className="h-11 w-11 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-xl hover:opacity-90 disabled:opacity-50 flex-shrink-0 transition-opacity shadow-xs"
+            title="Send WhatsApp Message"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
 
       {/* MOBILE AI COPILOT BOTTOM-SHEET / DRAWER */}
       {mobileCopilotOpen && (

@@ -55,7 +55,7 @@ export const getConversationMessages = async (req: Request, res: Response, next:
       .from('whatsapp_messages')
       .select('*', { count: 'exact' })
       .eq('conversation_id', id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .range(from, to);
 
     if (error) throw error;
