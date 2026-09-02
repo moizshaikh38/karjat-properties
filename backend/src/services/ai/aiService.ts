@@ -117,9 +117,16 @@ export class OpenRouterProvider implements AIProvider {
     } catch (error: any) {
       const errMsg = error.response?.data?.error?.message || error.message;
       logger.error({ error: errMsg }, 'OpenRouter API request failed');
-      // Graceful fallback response
+      
+      const payloadSummary = JSON.stringify({
+        model: this.defaultModel,
+        msgCount: request.messages.length,
+        tools: request.tools?.length,
+        lastMsg: request.messages[request.messages.length - 1]?.content
+      });
+
       return {
-        content: `Sorry, there was a system error: ${errMsg}. Our senior real estate advisor will connect with you shortly.`,
+        content: `Sorry, there was a system error: ${errMsg}. Payload: ${payloadSummary}. Our senior real estate advisor will connect with you shortly.`,
       };
     }
   }
