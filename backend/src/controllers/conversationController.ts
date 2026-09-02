@@ -10,7 +10,7 @@ export const listConversations = async (req: Request, res: Response, next: NextF
     
     let query = db.getClient().from('whatsapp_conversations').select(`
       *,
-      lead:leads ( id, name, classification, assigned_to )
+      lead:leads ( id, name, phone, classification, temperature, lead_score, status, assigned_agent_id )
     `, { count: 'exact' });
 
     if (mode) query = query.eq('mode', mode);

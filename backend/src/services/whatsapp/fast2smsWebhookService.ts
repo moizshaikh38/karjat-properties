@@ -10,16 +10,23 @@ export interface Fast2SMSWebhookPayload {
   waba_id?: string;
   from?: string;
   sender_phone?: string;
+  phone?: string;
+  mobile?: string;
+  sender?: string;
+  wa_id?: string;
   message_type?: string;
   type?: string;
   body?: string;
   text?: string;
   message?: string;
+  msg?: string;
+  content?: string;
   caption?: string;
   media_url?: string;
   url?: string;
   message_id?: string;
   id?: string;
+  msg_id?: string;
   context_message_id?: string;
   reply_to_message_id?: string;
   webhook_type?: string;
@@ -28,6 +35,7 @@ export interface Fast2SMSWebhookPayload {
   errors?: any;
   error?: any;
   entry?: any[];
+  data?: any;
   [key: string]: any;
 }
 
@@ -53,19 +61,26 @@ export class Fast2SMSWebhookService {
    */
   public async handleWebhook(payload: any): Promise<{ success: boolean; duplicate?: boolean }> {
     try {
+      logger.info({ payload }, 'Fast2SMS webhook payload received in service');
+
       // If it's a Meta-wrapped batch structure (entry[]), handle array
-      if (payload.entry && Array.isArray(payload.entry)) {
+      if (payload?.entry && Array.isArray(payload.entry)) {
         return this.handleMetaWrappedPayload(payload);
       }
 
+      // If nested under .data object
+      const targetPayload = payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
+        ? { ...payload, ...payload.data }
+        : payload;
+
       // Standard direct Fast2SMS JSON payload
-      const normalized = this.normalizePayload(payload);
+      const normalized = this.normalizePayload(targetPayload);
       if (!normalized) {
         logger.warn({ payload }, 'Fast2SMS webhook payload could not be normalized');
         return { success: false };
       }
 
-      // 1. Idempotency Guard via whatsapp_webhook_events
+      // 1. Idempotency Guard
       const isDuplicate = await this.recordWebhookEvent(normalized);
       if (isDuplicate) {
         logger.debug({ eventId: normalized.providerMessageId }, 'Duplicate Fast2SMS webhook event ignored');
@@ -90,22 +105,23 @@ export class Fast2SMSWebhookService {
    * Normalizes Fast2SMS webhook payload into a consistent internal model
    */
   public normalizePayload(data: Fast2SMSWebhookPayload): NormalizedFast2SMSEvent | null {
-    if (!data) return null;
+    if (!data || typeof data !== 'object') return null;
 
     const messageId = String(
       data.message_id ||
       data.id ||
+      data.msg_id ||
+      data.wamid ||
       data.context_message_id ||
       data.request_id ||
-      `f2s-event-${Date.now()}`
+      `f2s-${Date.now()}-${Math.random().toString(36).substring(7)}`
     );
 
-    const rawTimestamp = data.timestamp;
+    const rawTimestamp = data.timestamp || data.time;
     let isoTimestamp = new Date().toISOString();
     if (rawTimestamp) {
       const numTs = typeof rawTimestamp === 'string' ? parseInt(rawTimestamp, 10) : rawTimestamp;
       if (!isNaN(numTs)) {
-        // Handle seconds vs milliseconds timestamp
         const ms = numTs < 10000000000 ? numTs * 1000 : numTs;
         isoTimestamp = new Date(ms).toISOString();
       } else {
@@ -113,8 +129,8 @@ export class Fast2SMSWebhookService {
       }
     }
 
-    const webhookType = (data.webhook_type || '').toLowerCase();
-    const statusField = (data.status || '').toLowerCase();
+    const webhookType = String(data.webhook_type || data.event || '').toLowerCase();
+    const statusField = String(data.status || data.delivery_status || '').toLowerCase();
 
     // Check if this is a status event (sent, delivered, read, failed)
     const isStatusEvent =
@@ -144,10 +160,23 @@ export class Fast2SMSWebhookService {
     }
 
     // Otherwise, treat as incoming message
-    const customerPhone = data.from || data.sender_phone || data.display_phone_number || '';
-    const messageType = (data.message_type || data.type || 'text').toLowerCase();
-    const text = data.body || data.text || data.message || data.caption || null;
-    const mediaUrl = data.media_url || data.url || null;
+    const customerPhone = String(
+      data.from ||
+      data.sender_phone ||
+      data.phone ||
+      data.mobile ||
+      data.sender ||
+      data.wa_id ||
+      data.display_phone_number ||
+      data.contact?.phone ||
+      data.data?.from ||
+      data.data?.mobile ||
+      ''
+    ).trim();
+
+    const messageType = String(data.message_type || data.type || 'text').toLowerCase();
+    const text = data.body || data.text || data.message || data.msg || data.content || data.caption || data.data?.text || data.data?.message || null;
+    const mediaUrl = data.media_url || data.url || data.media || null;
 
     return {
       provider: 'fast2sms',
@@ -169,9 +198,11 @@ export class Fast2SMSWebhookService {
    */
   private async handleIncomingMessage(event: NormalizedFast2SMSEvent): Promise<void> {
     if (!event.customerPhone) {
-      logger.warn({ event }, 'Fast2SMS incoming message missing customer phone');
+      logger.warn({ event }, 'Fast2SMS incoming message missing customer phone number');
       return;
     }
+
+    logger.info({ phone: event.customerPhone, text: event.text }, 'Processing Fast2SMS customer incoming message');
 
     const processedMsg: ProcessedWebhookMessage = {
       whatsapp_message_id: event.providerMessageId,
@@ -200,17 +231,13 @@ export class Fast2SMSWebhookService {
 
     logger.info({ messageId, status }, 'Processing Fast2SMS message status update');
 
-    // 1. Update message repo
     const metadata: any = { status_updated_at: event.timestamp };
     if (event.errors) metadata.errors = event.errors;
 
     await messageRepo.updateMessageStatus(messageId, status, metadata);
 
-    // 2. Update campaign_recipients if applicable
     const client = db.getClient();
-    const updateData: any = {
-      status: status.toUpperCase(),
-    };
+    const updateData: any = { status: status.toUpperCase() };
 
     if (status === 'delivered') updateData.delivered_at = event.timestamp;
     if (status === 'read') updateData.read_at = event.timestamp;
@@ -219,10 +246,14 @@ export class Fast2SMSWebhookService {
       updateData.failure_reason = typeof event.errors === 'string' ? event.errors : JSON.stringify(event.errors || 'UNKNOWN');
     }
 
-    await client
-      .from('campaign_recipients')
-      .update(updateData)
-      .eq('provider_message_id', messageId);
+    try {
+      await client
+        .from('campaign_recipients')
+        .update(updateData)
+        .eq('provider_message_id', messageId);
+    } catch (e) {
+      // Ignore if table not present
+    }
   }
 
   /**
@@ -247,16 +278,13 @@ export class Fast2SMSWebhookService {
         .single();
 
       if (error) {
-        // Unique constraint violation means duplicate event
         if (error.code === '23505') {
           return true;
         }
-        logger.warn({ error }, 'Failed to insert webhook event record (continuing)');
       }
 
       return false;
     } catch {
-      // In case database table is not migrated yet or throws, fallback gracefully without blocking
       return false;
     }
   }

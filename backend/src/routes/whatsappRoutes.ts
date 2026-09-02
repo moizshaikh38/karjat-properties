@@ -12,6 +12,14 @@ import { normalizePhoneNumber } from '../utils/phone';
 // ==========================================
 export const fast2smsWebhookRouter = Router();
 
+// GET routes to pass Fast2SMS URL verification probes
+fast2smsWebhookRouter.get('/whatsapp', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', service: 'Fast2SMS WhatsApp Webhook Receiver', timestamp: new Date().toISOString() });
+});
+fast2smsWebhookRouter.get('/', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', service: 'Fast2SMS Webhook Receiver', timestamp: new Date().toISOString() });
+});
+
 fast2smsWebhookRouter.post('/whatsapp', webhookController.receiveFast2SMSWebhook);
 fast2smsWebhookRouter.post('/', webhookController.receiveFast2SMSWebhook);
 
@@ -22,7 +30,9 @@ fast2smsWebhookRouter.post('/', webhookController.receiveFast2SMSWebhook);
 export const webhookRouter = Router();
 
 webhookRouter.get('/', webhookController.verifyWebhook);
+webhookRouter.get('/whatsapp', webhookController.verifyWebhook);
 webhookRouter.post('/', webhookController.receiveWebhook);
+webhookRouter.post('/whatsapp', webhookController.receiveWebhook);
 
 // ==========================================
 // Admin & Settings Router (Protected)

@@ -51,6 +51,7 @@ function AppRoutes() {
         <Route path="analytics" element={<Analytics />} />
         <Route path="agents" element={<Agents />} />
         <Route path="team" element={<Agents />} />
+        <Route path="staff" element={<Agents />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
