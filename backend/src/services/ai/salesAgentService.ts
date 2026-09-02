@@ -159,9 +159,16 @@ export class SalesAgentService {
         }
 
         if (response.toolCalls && response.toolCalls.length > 0) {
-          if (response.content) {
-            conversationMessages.push({ role: 'assistant', content: response.content });
-          }
+          // MUST push the assistant message containing the tool calls to satisfy OpenAI API spec
+          conversationMessages.push({ 
+            role: 'assistant', 
+            content: response.content || null,
+            tool_calls: response.toolCalls.map(tc => ({
+              id: tc.id,
+              type: 'function',
+              function: { name: tc.name, arguments: JSON.stringify(tc.arguments) }
+            }))
+          });
 
           for (const call of response.toolCalls) {
             lastToolCalledName = call.name;
