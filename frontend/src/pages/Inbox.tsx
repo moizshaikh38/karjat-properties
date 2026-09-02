@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Search, Bot, User, PauseCircle, Filter, Clock } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Search, Bot, User, Clock, MessageSquare, Plus } from 'lucide-react';
 import api from '../services/api';
-import { Conversation } from '../types';
+import { Conversation, Lead } from '../types';
 import ChatWindow from '../components/ChatWindow';
 import AICopilot from '../components/AICopilot';
 import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '../components/ui/Badge';
 
 export default function Inbox() {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function Inbox() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 10000);
+    const interval = setInterval(fetchConversations, 8000);
     return () => clearInterval(interval);
   }, []);
 
@@ -39,34 +40,44 @@ export default function Inbox() {
 
   const isMobile = window.innerWidth < 768;
   const isConversationSelected = location.pathname.includes('/inbox/');
-  const currentConvId = location.pathname.split('/inbox/')[1];
+  const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? '');
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-[var(--color-bg)] overflow-hidden">
+    <div className="flex h-[calc(100vh-3rem)] bg-[var(--color-bg)] overflow-hidden">
       
-      {/* LEFT PANE - Conversation List */}
+      {/* LEFT PANE - High Density Conversation List (320px) */}
       <div className={`w-full md:w-80 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col ${isMobile && isConversationSelected ? 'hidden' : 'block'}`}>
-        <div className="p-4 border-b border-[var(--color-border)]">
-          <h2 className="text-xl font-semibold text-[var(--color-text)] mb-4">Inbox</h2>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-[var(--color-text-muted)]" />
+        
+        {/* Search & Filter Header */}
+        <div className="p-3 border-b border-[var(--color-border)] space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Threads</h2>
+            <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
+              {filteredConversations.length} Active
+            </span>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
             <input 
               type="text"
-              placeholder="Search conversations..."
+              placeholder="Search phone or buyer name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[var(--color-surface-elevated)] border-none text-[var(--color-text)] rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] rounded-[6px] pl-8 pr-2.5 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)]"
             />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-            {['all', 'ai', 'human', 'paused'].map(f => (
+
+          {/* Clean Segmented Filters */}
+          <div className="grid grid-cols-4 gap-1 p-0.5 bg-[var(--color-surface-elevated)] rounded-[6px] border border-[var(--color-border)]">
+            {(['all', 'ai', 'human', 'paused'] as const).map(f => (
               <button
                 key={f}
-                onClick={() => setFilter(f as any)}
-                className={`px-3 py-1 text-xs rounded-full whitespace-nowrap capitalize transition-colors ${
+                onClick={() => setFilter(f)}
+                className={`py-1 text-[11px] font-medium rounded-[4px] capitalize transition-colors text-center cursor-pointer ${
                   filter === f 
-                    ? 'bg-[var(--color-primary)] text-white' 
-                    : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] shadow-xs' 
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                 }`}
               >
                 {f}
@@ -75,88 +86,80 @@ export default function Inbox() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        {/* Conversation List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-[var(--color-border)] hide-scrollbar">
           {filteredConversations.length === 0 ? (
-            <div className="p-8 text-center text-[var(--color-text-muted)] text-sm">
-              No conversations found.
+            <div className="p-6 text-center text-[12px] text-[var(--color-text-muted)]">
+              No matching conversations found.
             </div>
           ) : (
-            filteredConversations.map(conv => (
-              <div 
-                key={conv.id}
-                onClick={() => navigate(`/inbox/${conv.id}`)}
-                className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-surface-elevated)] transition-colors ${
-                  currentConvId === conv.id ? 'bg-[var(--color-surface-elevated)] border-l-4 border-l-[var(--color-primary)]' : 'border-l-4 border-l-transparent'
-                }`}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <div className="font-medium text-[var(--color-text)] truncate pr-2">
-                    {conv.lead?.name || conv.whatsapp_phone}
-                  </div>
-                  <div className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1 whitespace-nowrap">
-                    {conv.last_message_at ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true }) : 'New'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-[10px] px-2 py-0.5 rounded flex items-center gap-1 ${
-                    conv.mode === 'ai' ? 'bg-purple-100 text-purple-700' :
-                    conv.mode === 'human' ? 'bg-blue-100 text-blue-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    {conv.mode === 'ai' ? <Bot className="w-3 h-3" /> : conv.mode === 'human' ? <User className="w-3 h-3" /> : <PauseCircle className="w-3 h-3" />}
-                    <span className="capitalize">{conv.mode}</span>
-                  </span>
-                  {conv.lead?.temperature && (
-                    <span className={`text-[10px] px-2 py-0.5 rounded ${
-                      conv.lead.temperature === 'HOT' ? 'bg-orange-100 text-orange-700' :
-                      conv.lead.temperature === 'WARM' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {conv.lead.temperature}
+            filteredConversations.map(conv => {
+              const lead: Partial<Lead> = conv.lead || {};
+              const isSelected = currentConvId === conv.id;
+              const isHot = lead.classification === 'HOT' || lead.temperature === 'HOT';
+              const isWarm = lead.classification === 'WARM' || lead.temperature === 'WARM';
+
+              return (
+                <div 
+                  key={conv.id}
+                  onClick={() => navigate(`/inbox/${conv.id}`)}
+                  className={`p-3 cursor-pointer transition-colors ${
+                    isSelected 
+                      ? 'bg-[var(--color-surface-elevated)] border-l-2 border-l-[var(--color-accent)]' 
+                      : 'hover:bg-[var(--color-surface-elevated)]/40 border-l-2 border-l-transparent'
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-2 mb-1">
+                    <span className="font-medium text-[13px] text-[var(--color-text)] truncate">
+                      {lead.name || conv.whatsapp_phone}
                     </span>
-                  )}
+                    <span className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap font-mono tabular-nums">
+                      {conv.last_message_at 
+                        ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: false }) 
+                        : 'New'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] font-mono">
+                    <span>{conv.whatsapp_phone}</span>
+                    <Badge variant={isHot ? 'hot' : isWarm ? 'warm' : 'cold'} size="sm">
+                      {isHot ? 'Hot' : isWarm ? 'Warm' : 'Cold'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[var(--color-border)]/40 text-[10px] text-[var(--color-text-muted)]">
+                    <span className="truncate max-w-[170px]">
+                      {lead.preferred_bhk ? `${lead.preferred_bhk} Villa` : 'Karjat Inquirer'}
+                    </span>
+                    <span className="font-medium">
+                      {conv.mode === 'human' ? '👤 Human' : '🤖 AI'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
 
-      {/* CENTER PANE & RIGHT PANE Routes */}
-      <div className={`flex-1 flex ${isMobile && !isConversationSelected ? 'hidden' : 'block'}`}>
-        <Routes>
-          <Route path="/" element={
-            <div className="flex-1 flex items-center justify-center bg-[var(--color-bg)]">
-              <div className="text-center text-[var(--color-text-muted)]">
-                <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>Select a conversation to start messaging</p>
-              </div>
+      {/* CENTER & RIGHT: CHAT THREAD + COPILOT WORKSPACE */}
+      <div className="flex-1 flex overflow-hidden">
+        {currentConvId ? (
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 h-full overflow-hidden">
+              <ChatWindow conversationId={currentConvId} onModeChange={fetchConversations} />
             </div>
-          } />
-          <Route path="/:id" element={<ConversationView onModeChange={fetchConversations} />} />
-        </Routes>
+            <div className="hidden xl:block w-80 flex-shrink-0 border-l border-[var(--color-border)] bg-[var(--color-surface)] h-full overflow-y-auto hide-scrollbar">
+              <AICopilot conversationId={currentConvId} />
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-[13px]">
+            Select a WhatsApp conversation to begin.
+          </div>
+        )}
       </div>
+
     </div>
-  );
-}
-
-function MessageSquare(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
-}
-
-function ConversationView({ onModeChange }: { onModeChange: () => void }) {
-  const { id } = useParams<{id: string}>();
-  
-  if (!id) return null;
-
-  return (
-    <>
-      <div className="flex-1 flex flex-col min-w-0 border-r border-[var(--color-border)]">
-        <ChatWindow conversationId={id} onModeChange={onModeChange} />
-      </div>
-      <div className="hidden lg:block w-[300px] flex-shrink-0 bg-[var(--color-surface)] overflow-y-auto">
-        <AICopilot conversationId={id} />
-      </div>
-    </>
   );
 }

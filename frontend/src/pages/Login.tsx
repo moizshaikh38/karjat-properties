@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock, Mail, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/ui/Button';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -27,10 +28,10 @@ export default function Login() {
 
       if (authToken && authUser) {
         login(authToken, authUser);
-        toast.success('Welcome back!');
+        toast.success('Welcome back');
         navigate('/dashboard');
       } else {
-        setError('Login succeeded but token was missing');
+        setError('Authentication succeeded but session token was missing');
       }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.response?.data?.message || 'Invalid email or password');
@@ -40,36 +41,30 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Decorative background gradients */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-[var(--color-primary)] opacity-5 blur-3xl"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500 opacity-5 blur-3xl"></div>
-
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-[var(--color-primary)] rounded-2xl flex items-center justify-center shadow-lg transform rotate-3">
-            <Building2 className="w-8 h-8 text-white transform -rotate-3" />
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none">
+      
+      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+        <div className="flex justify-center mb-4">
+          <div className="w-9 h-9 bg-[var(--color-accent)] rounded-[6px] flex items-center justify-center text-white shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+            <Building2 className="w-5 h-5" />
           </div>
         </div>
-        <h2 className="text-center text-3xl font-bold tracking-tight text-[var(--color-text)]">
+        <h2 className="text-center text-[22px] font-medium font-display tracking-tight text-[var(--color-text)]">
           Karjat Properties
         </h2>
-        <p className="mt-2 text-center text-sm text-[var(--color-text-muted)]">
-          AI-Powered Real Estate CRM
+        <p className="mt-1 text-center text-[12px] text-[var(--color-text-muted)]">
+          Real Estate Operations & AI Sales CRM
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-[var(--color-surface)] py-8 px-4 shadow-xl shadow-black/5 sm:rounded-2xl sm:px-10 border border-[var(--color-border)]">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-sm">
+        <div className="bg-[var(--color-surface)] py-6 px-5 sm:px-6 shadow-[0_1px_2px_0_rgba(0,0,0,0.2)] rounded-[6px] border border-[var(--color-border)]">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text)]">
-                Email address
+              <label htmlFor="email" className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+                Brokerage Email
               </label>
-              <div className="mt-2 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-[var(--color-text-muted)]" />
-                </div>
+              <div className="relative">
                 <input
                   id="email"
                   name="email"
@@ -77,20 +72,17 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl py-3 text-[var(--color-text)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
-                  placeholder="you@example.com"
+                  className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  placeholder="admin@karjatproperties.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text)]">
+              <label htmlFor="password" className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
                 Password
               </label>
-              <div className="mt-2 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-[var(--color-text-muted)]" />
-                </div>
+              <div className="relative">
                 <input
                   id="password"
                   name="password"
@@ -98,39 +90,35 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-10 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-xl py-3 text-[var(--color-text)] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent transition-all"
+                  className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] pl-3 pr-9 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                   placeholder="••••••••"
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] focus:outline-none transition-colors"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
               </div>
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200">
-                <p className="text-sm text-red-600 text-center">{error}</p>
+              <div className="p-2.5 rounded-[4px] bg-[var(--color-status-hot)]/10 border border-[var(--color-status-hot)]/25">
+                <p className="text-[11px] text-[var(--color-status-hot)] text-center">{error}</p>
               </div>
             )}
 
-            <div>
-              <button
+            <div className="pt-1">
+              <Button
                 type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-[var(--color-primary)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--color-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                size="md"
+                fullWidth
+                isLoading={loading}
               >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
+                Sign In
+              </Button>
             </div>
           </form>
         </div>

@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, MoreVertical, X, Phone, User, Calendar, MapPin, Building, ChevronRight, Mail, DollarSign } from 'lucide-react';
+import { Search, Plus, X, Phone, User, Calendar, MapPin, Building, ChevronRight, Mail, DollarSign, RefreshCw, MessageSquare } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Lead } from '../types';
 import { Modal } from '../components/ui/Modal';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { useNavigate } from 'react-router-dom';
 
 export default function Leads() {
+  const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -13,6 +17,7 @@ export default function Leads() {
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadData, setSelectedLeadData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Add Lead Form State
@@ -50,6 +55,30 @@ export default function Leads() {
     fetchLeads();
   }, []);
 
+  // Fetch lead detail when drawer opens
+  useEffect(() => {
+    if (!selectedLeadId) {
+      setSelectedLeadData(null);
+      return;
+    }
+
+    const fetchDetail = async () => {
+      try {
+        const [lRes, rRes] = await Promise.all([
+          api.get(`/leads/${selectedLeadId}`).catch(() => ({ data: { data: null } })),
+          api.get(`/leads/${selectedLeadId}/requirements`).catch(() => ({ data: { data: null } })),
+        ]);
+        setSelectedLeadData({
+          lead: lRes.data?.data,
+          requirements: rRes.data?.data,
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchDetail();
+  }, [selectedLeadId]);
+
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.phone) {
@@ -82,7 +111,7 @@ export default function Leads() {
       }
 
       await api.post('/leads', payload);
-      toast.success('Lead created successfully! 👤');
+      toast.success('Lead created successfully');
       setIsAddModalOpen(false);
       setFormData({
         name: '',
@@ -101,7 +130,7 @@ export default function Leads() {
       });
       fetchLeads();
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to create lead');
+      toast.error(err.response?.data?.error?.message || 'Failed to create lead');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,31 +147,50 @@ export default function Leads() {
     );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto flex flex-col h-full bg-[var(--color-bg)]">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto flex flex-col h-full bg-[var(--color-bg)] animate-entrance">
+      
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)] mb-5">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-text)]">Leads</h1>
-          <p className="text-[var(--color-text-muted)] text-sm mt-1">Manage and track all your Karjat prospective buyers.</p>
+          <h1 className="text-[24px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            Buyer Database & Leads
+          </h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-0.5">
+            Verified prospective buyers, budget qualifications, and interaction history.
+          </p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 flex items-center gap-2 text-sm font-medium shadow-sm transition-opacity"
-        >
-          <Plus className="w-4 h-4" /> Add Lead
-        </button>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchLeads} 
+            isLoading={loading}
+            leftIcon={<RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            Add Buyer Lead
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-        <div className="flex gap-2 bg-[var(--color-surface)] p-1 rounded-lg border border-[var(--color-border)] inline-flex overflow-x-auto hide-scrollbar">
+      {/* FILTER BAR */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div className="flex gap-1 p-0.5 bg-[var(--color-surface-elevated)] rounded-[6px] border border-[var(--color-border)]">
           {['All', 'Hot', 'Warm', 'Cold'].map((f) => (
             <button
               key={f}
               onClick={() => setFilterTemp(f)}
-              className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-3 py-1 text-[12px] font-medium rounded-[4px] transition-colors cursor-pointer ${
                 filterTemp === f
-                  ? 'bg-[var(--color-surface-elevated)] shadow-sm text-[var(--color-text)] font-medium'
+                  ? 'bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] shadow-xs'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
               }`}
             >
@@ -150,484 +198,269 @@ export default function Leads() {
             </button>
           ))}
         </div>
-        <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-[var(--color-text-muted)]" />
+
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
           <input
             type="text"
-            placeholder="Search name, phone, email..."
+            placeholder="Search buyer name, phone, email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] rounded-[6px] pl-8 pr-3 py-1.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
           />
         </div>
       </div>
 
-      {/* Mobile Card List (Visible on mobile) */}
-      <div className="block md:hidden space-y-3">
-        {loading ? (
-          [1, 2, 3].map((i) => (
-            <div key={i} className="h-28 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl animate-pulse"></div>
-          ))
-        ) : filteredLeads.length === 0 ? (
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-8 text-center text-xs text-[var(--color-text-muted)]">
-            No leads found matching your filters.
-          </div>
-        ) : (
-          filteredLeads.map((lead) => (
-            <div
-              key={lead.id}
-              onClick={() => setSelectedLeadId(lead.id)}
-              className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xs active:scale-[0.99] transition-transform cursor-pointer space-y-2.5"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-sm text-[var(--color-text)]">{lead.name || 'Unknown Buyer'}</h3>
-                  <div className="text-xs text-[var(--color-text-muted)] font-mono">{lead.phone}</div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-black text-[var(--color-primary)]">{lead.lead_score || 0}</span>
-                  <span className="text-[10px] text-[var(--color-text-muted)]">/100</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)] text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 bg-[var(--color-surface-elevated)] text-[var(--color-text)] text-[10px] rounded-md font-medium uppercase border border-[var(--color-border)]">
-                    {lead.status?.replace(/_/g, ' ') || 'NEW'}
-                  </span>
-                  {lead.temperature && (
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
-                        lead.temperature === 'VERY_HOT' || lead.temperature === 'HOT'
-                          ? 'bg-rose-100 text-rose-700'
-                          : lead.temperature === 'WARM'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      {lead.temperature}
-                    </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-[var(--color-primary)] font-semibold flex items-center gap-0.5">
-                  View Profile <ChevronRight className="w-3.5 h-3.5" />
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Desktop Table (Hidden on mobile) */}
-      <div className="hidden md:block flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xs">
+      {/* DENSE SPREADSHEET TABLE */}
+      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] uppercase text-xs">
-              <tr>
-                <th className="px-6 py-3.5 font-semibold">Name</th>
-                <th className="px-6 py-3.5 font-semibold">Contact</th>
-                <th className="px-6 py-3.5 font-semibold">Source</th>
-                <th className="px-6 py-3.5 font-semibold">Status / Temp</th>
-                <th className="px-6 py-3.5 font-semibold">Score</th>
-                <th className="px-6 py-3.5 font-semibold text-right">Action</th>
+          <table className="w-full text-left text-[13px] border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">
+                <th className="py-2.5 px-4 font-medium">Buyer Name</th>
+                <th className="py-2.5 px-4 font-medium">Phone Number</th>
+                <th className="py-2.5 px-4 font-medium">Inquiry Source</th>
+                <th className="py-2.5 px-4 font-medium">Lead Stage</th>
+                <th className="py-2.5 px-4 font-medium">Temperature</th>
+                <th className="py-2.5 px-4 font-medium">Score</th>
+                <th className="py-2.5 px-4 text-right font-medium">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
+            <tbody className="divide-y divide-[var(--color-border)]">
               {loading ? (
                 [1, 2, 3, 4, 5].map((i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="px-6 py-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-24"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-32"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-20"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-20"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-8"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-8"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-28"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-24"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-20"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-20"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-16"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-10"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-12 ml-auto"></div></td>
                   </tr>
                 ))
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-[var(--color-text-muted)]">
-                    No leads found matching your filters.
+                  <td colSpan={7} className="py-12 text-center text-[12px] text-[var(--color-text-muted)]">
+                    No leads found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    onClick={() => setSelectedLeadId(lead.id)}
-                    className="hover:bg-[var(--color-surface-elevated)] cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-[var(--color-text)]">{lead.name || 'Unknown'}</div>
-                      {lead.email && <div className="text-xs text-[var(--color-text-muted)]">{lead.email}</div>}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-sm text-[var(--color-text-muted)]">{lead.phone}</td>
-                    <td className="px-6 py-4">
-                      <span className="capitalize text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-elevated)] px-2 py-0.5 rounded border border-[var(--color-border)]">
-                        {lead.source || 'whatsapp'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-[var(--color-surface-elevated)] text-[var(--color-text)] text-[10px] rounded border border-[var(--color-border)] font-medium uppercase">
-                          {lead.status?.replace(/_/g, ' ') || 'NEW'}
-                        </span>
-                        {lead.temperature && (
-                          <span
-                            className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
-                              lead.temperature === 'VERY_HOT' || lead.temperature === 'HOT'
-                                ? 'bg-rose-100 text-rose-700'
-                                : lead.temperature === 'WARM'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {lead.temperature}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-[var(--color-primary)]">{lead.lead_score || 0}</span>
-                      <span className="text-xs text-[var(--color-text-muted)]">/100</span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] rounded">
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                filteredLeads.map((lead) => {
+                  const isHot = lead.classification === 'HOT' || lead.temperature === 'HOT';
+                  const isWarm = lead.classification === 'WARM' || lead.temperature === 'WARM';
+
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => setSelectedLeadId(lead.id)}
+                      className="hover:bg-[var(--color-surface-elevated)]/40 cursor-pointer transition-colors"
+                    >
+                      <td className="py-3 px-4 font-medium text-[var(--color-text)]">
+                        {lead.name || 'Karjat Prospect'}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-[var(--color-text-muted)]">
+                        {lead.phone}
+                      </td>
+                      <td className="py-3 px-4 text-[12px] text-[var(--color-text-muted)] capitalize">
+                        {lead.source?.replace(/_/g, ' ') || 'WhatsApp'}
+                      </td>
+                      <td className="py-3 px-4 text-[12px] text-[var(--color-text)]">
+                        {lead.status?.replace(/_/g, ' ') || 'New'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge variant={isHot ? 'hot' : isWarm ? 'warm' : 'cold'}>
+                          {isHot ? 'Hot' : isWarm ? 'Warm' : 'Cold'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-[var(--color-text)] tabular-nums">
+                        {lead.lead_score || 0}/100
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLeadId(lead.id);
+                          }}
+                          className="text-[12px] font-medium text-[var(--color-accent)] hover:underline"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* SLIDE-IN LEAD DETAIL DRAWER */}
+      {selectedLeadId && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] flex justify-end"
+          onClick={() => setSelectedLeadId(null)}
+        >
+          <div 
+            className="w-full max-w-md bg-[var(--color-surface)] h-full flex flex-col border-l border-[var(--color-border)] shadow-2xl animate-in slide-in-from-right duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-[15px] font-display text-[var(--color-text)]">
+                  {selectedLeadData?.lead?.name || 'Buyer Profile'}
+                </h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] font-mono">
+                  {selectedLeadData?.lead?.phone}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedLeadId(null)}
+                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-[13px] hide-scrollbar">
+              
+              {/* Buyer Overview */}
+              <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-2 bg-[var(--color-surface)]">
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)] block">Lead Status & Scoring</span>
+                <div className="flex items-center justify-between">
+                  <Badge variant={selectedLeadData?.lead?.temperature === 'HOT' ? 'hot' : 'warm'}>
+                    {selectedLeadData?.lead?.temperature || 'Warm Lead'}
+                  </Badge>
+                  <span className="font-mono text-[12px] font-medium text-[var(--color-text)]">
+                    Score: {selectedLeadData?.lead?.lead_score || 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Verified Requirements */}
+              <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-3 bg-[var(--color-surface)]">
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)] block">Verified Property Criteria</span>
+                
+                <div className="grid grid-cols-2 gap-3 text-[12px]">
+                  <div>
+                    <span className="text-[11px] text-[var(--color-text-muted)] block">Max Budget</span>
+                    <span className="font-medium font-display text-[var(--color-text)]">
+                      {selectedLeadData?.requirements?.max_budget 
+                        ? `₹${(selectedLeadData.requirements.max_budget / 100000).toFixed(0)} Lakhs` 
+                        : 'Not specified'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-[var(--color-text-muted)] block">Configuration</span>
+                    <span className="font-medium text-[var(--color-text)]">
+                      {selectedLeadData?.requirements?.preferred_bhk ? `${selectedLeadData.requirements.preferred_bhk} BHK` : 'Any BHK'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-[var(--color-text-muted)] block">Property Type</span>
+                    <span className="font-medium text-[var(--color-text)] capitalize">
+                      {selectedLeadData?.requirements?.property_types?.[0] || 'Villa'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-[var(--color-text-muted)] block">Purpose</span>
+                    <span className="font-medium text-[var(--color-text)] capitalize">
+                      {selectedLeadData?.requirements?.purpose?.replace(/_/g, ' ') || 'Self-use'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="pt-2">
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={() => navigate('/inbox')}
+                  leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
+                >
+                  Open in WhatsApp Inbox
+                </Button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ADD LEAD MODAL */}
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Add New Lead" maxWidth="2xl">
-        <form onSubmit={handleAddSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Add Prospective Buyer"
+        maxWidth="md"
+      >
+        <form onSubmit={handleAddSubmit} className="space-y-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Full Name *</label>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Buyer Name *</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Ramesh Kulkarni"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
+                placeholder="e.g. Rahul Sharma"
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             </div>
-
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">WhatsApp / Phone *</label>
-              <input
-                type="tel"
-                required
-                placeholder="e.g. 9876543210"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Email (optional)</label>
-              <input
-                type="email"
-                placeholder="e.g. ramesh@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Lead Source</label>
-              <select
-                value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              >
-                <option value="manual">Manual Entry / Direct</option>
-                <option value="whatsapp">WhatsApp Inbound</option>
-                <option value="website">Website Inquiry</option>
-                <option value="referral">Referral</option>
-                <option value="instagram">Instagram</option>
-                <option value="facebook_ads">Facebook Ads</option>
-                <option value="google_ads">Google Ads</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Lead Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              >
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Qualified</option>
-                <option value="property_interest">Property Interest</option>
-                <option value="site_visit_requested">Site Visit Requested</option>
-                <option value="site_visit_scheduled">Site Visit Scheduled</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Preferred Property Type</label>
-              <select
-                value={formData.property_type}
-                onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              >
-                <option value="villa">Villa</option>
-                <option value="apartment">Apartment</option>
-                <option value="farmhouse">Farmhouse</option>
-                <option value="plot">Plot / Land</option>
-                <option value="bungalow">Bungalow</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Min Budget (₹)</label>
-              <input
-                type="number"
-                min="0"
-                placeholder="5000000"
-                value={formData.min_budget}
-                onChange={(e) => setFormData({ ...formData, min_budget: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Max Budget (₹)</label>
-              <input
-                type="number"
-                min="0"
-                placeholder="15000000"
-                value={formData.max_budget}
-                onChange={(e) => setFormData({ ...formData, max_budget: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Preferred BHK</label>
-              <input
-                type="number"
-                min="0"
-                placeholder="3"
-                value={formData.preferred_bhk}
-                onChange={(e) => setFormData({ ...formData, preferred_bhk: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-[var(--color-text)] mb-1">Preferred Locations in Karjat</label>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">WhatsApp Phone *</label>
               <input
                 type="text"
-                placeholder="e.g. Bhilavle, Kashele, Dahivali"
-                value={formData.preferred_locations}
-                onChange={(e) => setFormData({ ...formData, preferred_locations: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none text-[var(--color-text)]"
+                required
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+91 98200..."
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 border border-[var(--color-border)] text-[var(--color-text)] rounded-lg text-sm hover:bg-[var(--color-surface-elevated)]"
-            >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Property Type</label>
+              <select
+                value={formData.property_type}
+                onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+              >
+                <option value="villa">Villa / Bungalow</option>
+                <option value="plot">NA Plot / Land</option>
+                <option value="farmhouse">Farmhouse Estate</option>
+                <option value="apartment">Apartment</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Max Budget (INR)</label>
+              <input
+                type="number"
+                value={formData.max_budget}
+                onChange={(e) => setFormData({ ...formData, max_budget: e.target.value })}
+                placeholder="10000000"
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsAddModalOpen(false)}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creating...' : 'Create Lead'}
-            </button>
+            </Button>
+            <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
+              Save Buyer
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Slide-over Panel for Details */}
-      {selectedLeadId && (
-        <LeadDetailDrawer leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} />
-      )}
-    </div>
-  );
-}
-
-function LeadDetailDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLeadDetails = async () => {
-      try {
-        setLoading(true);
-        const [leadRes, reqRes, actRes] = await Promise.all([
-          api.get(`/leads/${leadId}`).catch(() => ({ data: { data: null } })),
-          api.get(`/leads/${leadId}/requirements`).catch(() => ({ data: { data: null } })),
-          api.get(`/leads/${leadId}/interactions`).catch(() => ({ data: { data: null } })),
-        ]);
-        setData({
-          lead: leadRes.data?.data?.lead || leadRes.data?.data,
-          reqs: reqRes.data?.data?.requirements || reqRes.data?.data,
-          activities: actRes.data?.data?.interactions || actRes.data?.data,
-        });
-      } catch (err) {
-        toast.error('Failed to load lead details');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeadDetails();
-  }, [leadId]);
-
-  const formatPrice = (price: number) => {
-    if (!price) return '—';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end bg-black/30 backdrop-blur-xs" onClick={onClose}>
-      <div
-        className="w-full max-w-md bg-[var(--color-surface)] h-full shadow-2xl flex flex-col border-l border-[var(--color-border)] animate-in slide-in-from-right"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-surface)]">
-          <h2 className="text-lg font-semibold text-[var(--color-text)]">Lead Profile</h2>
-          <button
-            onClick={onClose}
-            className="p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] rounded"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-[var(--color-bg)]">
-          {loading ? (
-            <div className="animate-pulse space-y-4">
-              <div className="h-20 bg-[var(--color-surface-elevated)] rounded-xl"></div>
-              <div className="h-40 bg-[var(--color-surface-elevated)] rounded-xl"></div>
-            </div>
-          ) : !data?.lead ? (
-            <div className="text-center text-[var(--color-text-muted)]">Lead details not available.</div>
-          ) : (
-            <>
-              {/* Profile Card */}
-              <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)] shadow-sm">
-                <h3 className="text-xl font-bold text-[var(--color-text)]">{data.lead.name || 'Unnamed Lead'}</h3>
-                <div className="text-[var(--color-text-muted)] text-sm flex items-center gap-2 mt-1">
-                  <Phone className="w-3.5 h-3.5" /> {data.lead.phone}
-                </div>
-                {data.lead.email && (
-                  <div className="text-[var(--color-text-muted)] text-sm flex items-center gap-2 mt-1">
-                    <Mail className="w-3.5 h-3.5" /> {data.lead.email}
-                  </div>
-                )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <div className="bg-[var(--color-surface-elevated)] px-3 py-1.5 rounded-lg text-sm border border-[var(--color-border)]">
-                    Score: <span className="font-bold text-[var(--color-primary)]">{data.lead.lead_score || 0}</span>/100
-                  </div>
-                  <div className="bg-[var(--color-surface-elevated)] px-3 py-1.5 rounded-lg text-sm border border-[var(--color-border)] capitalize">
-                    Status: <span className="font-medium text-[var(--color-text)]">{data.lead.status || 'New'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Requirements */}
-              {data.reqs && (
-                <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)] shadow-sm">
-                  <h4 className="font-semibold mb-3 text-[var(--color-text)] flex items-center gap-2">
-                    <Building className="w-4 h-4 text-[var(--color-primary)]" /> Property Requirements
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {(data.reqs.min_budget || data.reqs.max_budget) && (
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-xs">Budget Range</span>
-                        <span className="font-medium text-[var(--color-text)]">
-                          {formatPrice(data.reqs.min_budget)} - {formatPrice(data.reqs.max_budget)}
-                        </span>
-                      </div>
-                    )}
-                    {data.reqs.preferred_bhk && (
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-xs">BHK Configuration</span>
-                        <span className="font-medium text-[var(--color-text)]">{data.reqs.preferred_bhk} BHK</span>
-                      </div>
-                    )}
-                    {data.reqs.preferred_locations && (
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-xs">Preferred Locations</span>
-                        <span className="font-medium text-[var(--color-text)]">
-                          {Array.isArray(data.reqs.preferred_locations)
-                            ? data.reqs.preferred_locations.join(', ')
-                            : data.reqs.preferred_locations}
-                        </span>
-                      </div>
-                    )}
-                    {data.reqs.property_type && (
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-xs">Property Type</span>
-                        <span className="font-medium text-[var(--color-text)] capitalize">
-                          {data.reqs.property_type}
-                        </span>
-                      </div>
-                    )}
-                    {data.reqs.purpose && (
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-xs">Purchase Purpose</span>
-                        <span className="font-medium text-[var(--color-text)] capitalize">{data.reqs.purpose}</span>
-                      </div>
-                    )}
-                    {data.reqs.purchase_timeline && (
-                      <div>
-                        <span className="text-[var(--color-text-muted)] block text-xs">Timeline</span>
-                        <span className="font-medium text-[var(--color-text)]">{data.reqs.purchase_timeline}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Activity */}
-              <div className="bg-[var(--color-surface)] p-4 rounded-xl border border-[var(--color-border)] shadow-sm">
-                <h4 className="font-semibold mb-3 text-[var(--color-text)] flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[var(--color-primary)]" /> Activity Log
-                </h4>
-                {data.activities && data.activities.length > 0 ? (
-                  <div className="space-y-4">
-                    {data.activities.slice(0, 5).map((act: any, i: number) => (
-                      <div key={i} className="flex gap-3 text-sm">
-                        <div className="w-2 h-2 mt-1.5 rounded-full bg-[var(--color-primary)]"></div>
-                        <div>
-                          <div className="text-[var(--color-text)] font-medium">{act.notes || act.interaction_type}</div>
-                          <div className="text-xs text-[var(--color-text-muted)]">
-                            {act.created_at ? new Date(act.created_at).toLocaleString() : 'Recent'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-[var(--color-text-muted)]">No recent activity recorded.</div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

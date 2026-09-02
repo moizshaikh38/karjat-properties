@@ -11,12 +11,16 @@ export interface Lead {
   phone: string;
   email?: string;
   source?: string;
-  classification: 'HOT' | 'WARM' | 'COLD';
-  temperature?: 'COLD' | 'WARM' | 'HOT' | 'VERY_HOT';
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  lead_score: number;
-  status: string;
+  classification?: 'HOT' | 'WARM' | 'COLD' | string;
+  temperature?: 'COLD' | 'WARM' | 'HOT' | 'VERY_HOT' | string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' | string;
+  lead_score?: number;
+  status?: string;
   assigned_to?: string;
+  preferred_bhk?: string | number;
+  budget_max?: number;
+  budget_min?: number;
+  preferred_locations?: string[];
 }
 
 export interface Conversation {

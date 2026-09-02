@@ -14,15 +14,15 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   rounded = 'md',
 }) => {
   const roundedClasses = {
-    sm: 'rounded-sm',
-    md: 'rounded-md',
-    lg: 'rounded-lg',
+    sm: 'rounded-[3px]',
+    md: 'rounded-[6px]',
+    lg: 'rounded-[6px]',
     full: 'rounded-full',
   };
 
   return (
     <div
-      className={`animate-pulse bg-surface-elevated border border-border/50 ${roundedClasses[rounded]} ${className}`}
+      className={`animate-pulse bg-[var(--color-surface-elevated)] border border-[var(--color-border)]/40 ${roundedClasses[rounded]} ${className}`}
       style={{ width, height }}
     />
   );

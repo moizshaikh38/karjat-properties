@@ -1,37 +1,48 @@
 export const colors = {
-  primary: '#047857',
-  primaryHover: '#065f46',
-  bgLight: '#fafafa',
-  bgDark: '#0a0a0a',
+  // Base & Surfaces (Dark Base)
+  bgDark: '#0e1420',
+  surfaceDark: '#151e2e',
+  surfaceElevatedDark: '#1d283d',
+  borderDark: '#233047',
+  textDark: '#f1f5f9',
+  textMutedDark: '#8b9bb4',
+
+  // Base & Surfaces (Warm Light Base)
+  bgLight: '#faf9f6',
   surfaceLight: '#ffffff',
-  surfaceDark: '#141414',
-  surfaceElevatedLight: '#ffffff',
-  surfaceElevatedDark: '#1a1a1a',
-  borderLight: '#e5e7eb',
-  borderDark: '#262626',
-  textLight: '#111827',
-  textDark: '#f5f5f5',
-  textMutedLight: '#6b7280',
-  textMutedDark: '#a3a3a3',
-  success: '#059669',
-  warning: '#d97706',
-  danger: '#dc2626',
-  info: '#2563eb',
+  surfaceElevatedLight: '#f3f1ec',
+  borderLight: '#e7e4dc',
+  textLight: '#141a24',
+  textMutedLight: '#636e80',
+
+  // Single Accent (Karjat Pine-Teal)
+  accent: '#0d766e',
+  accentHover: '#0f8c82',
+  primary: '#0d766e',
+  primaryHover: '#0f8c82',
+
+  // Desaturated Status Tones
+  statusHot: '#e06c75',
+  statusWarm: '#e5c07b',
+  statusCold: '#64748b',
+
+  // Utilities
+  success: '#10b981',
+  warning: '#e5c07b',
+  danger: '#e06c75',
+  info: '#60a5fa',
 };
 
 export const spacing = {
   xs: 4,
   sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-  '2xl': 40,
-  '3xl': 48,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 24,
+  '3xl': 32,
 };
 
 export const radii = {
-  sm: '4px',
-  md: '8px',
-  lg: '12px',
-  xl: '16px',
+  default: '6px',
 };

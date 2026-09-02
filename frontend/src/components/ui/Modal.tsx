@@ -47,42 +47,42 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div 
         ref={overlayRef}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-black/65 backdrop-blur-[2px] transition-opacity" 
         onClick={onClose}
         aria-hidden="true"
       />
       <div 
-        className={`relative bg-surface rounded-xl shadow-2xl w-full ${maxWidthClasses[maxWidth]} flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 border border-border`}
+        className={`relative bg-[var(--color-surface)] rounded-[6px] shadow-[0_8px_30px_rgb(0,0,0,0.35)] w-full ${maxWidthClasses[maxWidth]} flex flex-col max-h-[90vh] border border-[var(--color-border)]`}
         role="dialog"
         aria-modal="true"
       >
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-text">{title}</h2>
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--color-border)]">
+            <h2 className="text-[15px] font-semibold text-[var(--color-text)] tracking-tight">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1 rounded-md text-text-muted hover:text-text hover:bg-surface-elevated transition-colors"
+              className="p-1 rounded-[4px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] transition-colors cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
         {!title && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1 rounded-md text-text-muted hover:text-text hover:bg-surface-elevated transition-colors z-10"
+            className="absolute top-3 right-3 p-1 rounded-[4px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] transition-colors z-10 cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         )}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-5 overflow-y-auto flex-1 text-[13px]">
           {children}
         </div>
         {footer && (
-          <div className="px-6 py-4 border-t border-border bg-surface-elevated rounded-b-xl flex justify-end gap-3">
+          <div className="px-5 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)] flex justify-end gap-2.5">
             {footer}
           </div>
         )}

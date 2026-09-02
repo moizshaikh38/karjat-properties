@@ -15,13 +15,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={`${fullWidth ? 'w-full' : ''} ${className}`}>
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-text mb-1.5">
+          <label htmlFor={inputId} className="block text-[12px] font-medium text-[var(--color-text-muted)] mb-1">
             {label}
           </label>
         )}
         <div className="relative">
           {icon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
               {icon}
             </div>
           )}
@@ -30,18 +30,18 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             disabled={disabled}
             className={`
-              block w-full rounded-md border text-text bg-surface
-              focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm
+              block w-full rounded-[6px] border text-[var(--color-text)] bg-[var(--color-surface)]
+              focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)] text-[13px]
               transition-colors
-              ${error ? 'border-danger focus:ring-danger focus:border-danger' : 'border-border'}
-              ${icon ? 'pl-10' : 'pl-3'}
-              ${disabled ? 'opacity-50 cursor-not-allowed bg-surface-elevated' : ''}
-              py-2 pr-3
+              ${error ? 'border-[var(--color-status-hot)] focus:ring-[var(--color-status-hot)]' : 'border-[var(--color-border)]'}
+              ${icon ? 'pl-8' : 'pl-3'}
+              ${disabled ? 'opacity-50 cursor-not-allowed bg-[var(--color-surface-elevated)]' : ''}
+              h-9 pr-3
             `}
             {...props}
           />
         </div>
-        {error && <p className="mt-1.5 text-sm text-danger">{error}</p>}
+        {error && <p className="mt-1 text-[11px] text-[var(--color-status-hot)]">{error}</p>}
       </div>
     );
   }

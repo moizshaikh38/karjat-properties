@@ -4,6 +4,7 @@ interface Tab {
   id: string;
   label: string;
   icon?: React.ReactNode;
+  count?: number;
 }
 
 interface TabsProps {
@@ -16,7 +17,7 @@ interface TabsProps {
 
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className = '', fullWidth = false }) => {
   return (
-    <div className={`flex items-center p-1 bg-surface-elevated rounded-lg border border-border overflow-x-auto ${fullWidth ? 'w-full' : 'inline-flex'} ${className}`}>
+    <div className={`flex items-center gap-1 p-0.5 bg-[var(--color-surface-elevated)] rounded-[6px] border border-[var(--color-border)] overflow-x-auto ${fullWidth ? 'w-full' : 'inline-flex'} ${className}`}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -24,12 +25,17 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
             key={tab.id}
             onClick={() => onChange(tab.id)}
             className={`
-              relative flex-1 flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap
-              ${isActive ? 'text-primary bg-surface shadow-sm' : 'text-text-muted hover:text-text hover:bg-surface/50'}
+              flex-1 flex items-center justify-center px-3 py-1.5 text-[12px] font-medium rounded-[4px] transition-colors whitespace-nowrap cursor-pointer select-none
+              ${isActive ? 'text-[var(--color-text)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[0_1px_2px_0_rgba(0,0,0,0.15)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-transparent'}
             `}
           >
-            {tab.icon && <span className="mr-2">{tab.icon}</span>}
-            {tab.label}
+            {tab.icon && <span className="mr-1.5">{tab.icon}</span>}
+            <span>{tab.label}</span>
+            {tab.count !== undefined && (
+              <span className={`ml-1.5 px-1 rounded text-[10px] ${isActive ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'}`}>
+                {tab.count}
+              </span>
+            )}
           </button>
         );
       })}

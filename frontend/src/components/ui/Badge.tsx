@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary';
+export type BadgeVariant = 'default' | 'hot' | 'warm' | 'cold' | 'success' | 'warning' | 'danger' | 'info' | 'primary';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -9,21 +9,24 @@ interface BadgeProps {
   size?: 'sm' | 'md';
 }
 
-export const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', className = '', size = 'md' }) => {
-  const baseStyles = 'inline-flex items-center rounded-full font-medium';
+export const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', className = '', size = 'sm' }) => {
+  const baseStyles = 'inline-flex items-center font-medium tracking-tight rounded-[4px] border';
   
   const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
+    sm: 'px-1.5 py-0.5 text-[11px] leading-tight',
+    md: 'px-2 py-0.5 text-[12px] leading-tight',
   };
   
   const variants = {
-    default: 'bg-surface-elevated text-text border border-border',
-    success: 'bg-success/10 text-success border border-success/20',
-    warning: 'bg-warning/10 text-warning border border-warning/20',
-    danger: 'bg-danger/10 text-danger border border-danger/20',
-    info: 'bg-info/10 text-info border border-info/20',
-    primary: 'bg-primary/10 text-primary border border-primary/20',
+    default: 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border-[var(--color-border)]',
+    hot: 'bg-[var(--color-status-hot)]/10 text-[var(--color-status-hot)] border-[var(--color-status-hot)]/25',
+    warm: 'bg-[var(--color-status-warm)]/10 text-[var(--color-status-warm)] border-[var(--color-status-warm)]/25',
+    cold: 'bg-[var(--color-status-cold)]/10 text-[var(--color-status-cold)] border-[var(--color-status-cold)]/25',
+    success: 'bg-[var(--color-success)]/10 text-[var(--color-success)] border-[var(--color-success)]/25',
+    warning: 'bg-[var(--color-warning)]/10 text-[var(--color-warning)] border-[var(--color-warning)]/25',
+    danger: 'bg-[var(--color-danger)]/10 text-[var(--color-danger)] border-[var(--color-danger)]/25',
+    info: 'bg-[var(--color-info)]/10 text-[var(--color-info)] border-[var(--color-info)]/25',
+    primary: 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/25',
   };
 
   return (

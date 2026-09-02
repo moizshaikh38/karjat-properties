@@ -18,14 +18,14 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-surface border border-border rounded-lg overflow-hidden ${
-        hoverable ? 'transition-shadow hover:shadow-md hover:border-primary/50' : ''
+      className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden ${
+        hoverable ? 'transition-colors hover:border-[var(--color-border)]/80 hover:bg-[var(--color-surface-elevated)]/30' : ''
       } ${className}`}
       {...props}
     >
-      {header && <div className="px-6 py-4 border-b border-border">{header}</div>}
-      <div className={noPadding ? '' : 'p-6'}>{children}</div>
-      {footer && <div className="px-6 py-4 border-t border-border bg-surface-elevated">{footer}</div>}
+      {header && <div className="px-4 py-3 border-b border-[var(--color-border)] text-[14px] font-medium text-[var(--color-text)]">{header}</div>}
+      <div className={noPadding ? '' : 'p-4'}>{children}</div>
+      {footer && <div className="px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[13px] text-[var(--color-text-muted)]">{footer}</div>}
     </div>
   );
 };

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, PauseCircle, Send, Check, CheckCheck, AlertCircle, ArrowLeft, Brain, Sparkles, X } from 'lucide-react';
+import { Bot, User, PauseCircle, Send, Check, CheckCheck, AlertCircle, ArrowLeft, Sparkles, X } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Conversation, Message } from '../types';
+import { Conversation, Message, Lead } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 import AICopilot from './AICopilot';
 
 interface ChatWindowProps {
@@ -56,7 +58,7 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
     isInitialLoadRef.current = true;
     prevMsgCountRef.current = 0;
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
   }, [conversationId]);
 
@@ -73,7 +75,7 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
     if (messages.length > prevMsgCountRef.current) {
       const container = containerRef.current;
       const isNearBottom = container
-        ? container.scrollHeight - container.scrollTop - container.clientHeight < 150
+        ? container.scrollHeight - container.scrollTop - container.clientHeight < 180
         : true;
 
       if (isNearBottom) {
@@ -84,10 +86,9 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
   }, [messages]);
 
   const handleModeChange = async (action: 'takeover' | 'release-to-ai' | 'pause') => {
-    if (!window.confirm(`Are you sure you want to switch conversation mode to ${action.replace('-', ' ')}?`)) return;
     try {
       await api.post(`/conversations/${conversationId}/${action}`);
-      toast.success(`Mode updated to ${action}`);
+      toast.success(`Mode updated to ${action.replace('-', ' ')}`);
       fetchData();
       if (onModeChange) onModeChange();
     } catch (err) {
@@ -114,100 +115,101 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
   if (loading && !conversation) {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-bg)]">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-xs font-medium">Loading WhatsApp messages...</span>
-        </div>
+        <span className="text-[12px]">Loading WhatsApp messages...</span>
       </div>
     );
   }
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-bg)]">
+      <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-bg)] text-[12px]">
         Conversation not found
       </div>
     );
   }
 
   const isAiMode = conversation.mode === 'ai';
-  const isHumanMode = conversation.mode === 'human';
+  const lead: Partial<Lead> = conversation.lead || {};
 
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg)] relative">
+      
       {/* CHAT HEADER */}
-      <div className="h-16 px-4 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex items-center justify-between shadow-xs flex-shrink-0 z-10">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="h-12 px-4 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0 z-10">
+        <div className="flex items-center gap-2.5 min-w-0">
           <button 
             onClick={() => navigate('/inbox')} 
-            className="md:hidden p-1.5 -ml-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] rounded-lg"
+            className="md:hidden p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
           
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center text-white font-bold text-sm shadow-xs flex-shrink-0">
-            {(conversation.lead?.name?.[0] || conversation.whatsapp_phone?.[0] || 'K').toUpperCase()}
+          <div className="h-7 w-7 rounded-[4px] bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text)] font-medium text-[12px] flex-shrink-0 font-display">
+            {(lead.name?.[0] || conversation.whatsapp_phone?.[0] || 'K').toUpperCase()}
           </div>
           
           <div className="min-w-0 truncate">
-            <div className="font-bold text-sm text-[var(--color-text)] truncate">
-              {conversation.lead?.name || conversation.whatsapp_phone}
-            </div>
-            <div className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1 font-mono truncate">
-              {conversation.whatsapp_phone}
+            <div className="font-medium text-[13px] text-[var(--color-text)] truncate flex items-center gap-2">
+              <span>{lead.name || conversation.whatsapp_phone}</span>
+              {lead.temperature && (
+                <Badge variant={lead.temperature === 'HOT' ? 'hot' : lead.temperature === 'WARM' ? 'warm' : 'cold'} size="sm">
+                  {lead.temperature}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
 
-        {/* MODE CONTROL & AI COPILOT TOGGLE */}
+        {/* Controls */}
         <div className="flex items-center gap-2">
           {/* Mobile Copilot Trigger */}
           <button
             onClick={() => setMobileCopilotOpen(true)}
-            className="lg:hidden p-2 text-purple-600 bg-purple-50 dark:bg-purple-950/40 rounded-lg hover:bg-purple-100 transition-colors"
-            title="Open AI Copilot"
+            className="xl:hidden p-1.5 text-[var(--color-accent)] bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[4px] hover:text-[var(--color-text)] cursor-pointer"
+            title="Customer details"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-3.5 h-3.5" />
           </button>
 
           {isAiMode || conversation.mode === 'paused' ? (
-            <button 
+            <Button 
+              variant="outline"
+              size="sm"
               onClick={() => handleModeChange('takeover')}
-              className="text-xs font-bold px-3 py-1.5 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 flex items-center gap-1.5 shadow-xs transition-opacity"
+              leftIcon={<User className="w-3 h-3 text-[var(--color-text-muted)]" />}
             >
-              <User className="w-3.5 h-3.5" /> <span>Takeover</span>
-            </button>
+              Takeover
+            </Button>
           ) : (
-            <button 
+            <Button 
+              variant="primary"
+              size="sm"
               onClick={() => handleModeChange('release-to-ai')}
-              className="text-xs font-bold px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1.5 shadow-xs transition-colors"
+              leftIcon={<Bot className="w-3 h-3" />}
             >
-              <Bot className="w-3.5 h-3.5" /> <span>Release to AI</span>
-            </button>
+              Release to AI
+            </Button>
           )}
 
           {conversation.mode !== 'paused' && (
             <button 
               onClick={() => handleModeChange('pause')}
-              className="p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] rounded-lg transition-colors"
-              title="Pause AI Automation"
+              className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] rounded-[4px] transition-colors cursor-pointer"
+              title="Pause automation"
             >
-              <PauseCircle className="w-5 h-5" />
+              <PauseCircle className="w-4 h-4" />
             </button>
           )}
         </div>
       </div>
 
-      {/* MESSAGES STREAM */}
+      {/* MESSAGES STREAM (WHATSAPP CHAT INTERFACE) */}
       <div 
         ref={containerRef} 
-        className="flex-1 overflow-y-auto p-4 space-y-3 bg-[var(--color-bg)] hide-scrollbar" 
-        style={{ 
-          backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(4, 120, 87, 0.03) 0%, transparent 100%)' 
-        }}
+        className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-[var(--color-bg)] hide-scrollbar"
       >
         {messages.length === 0 ? (
-          <div className="text-center text-xs text-[var(--color-text-muted)] mt-12">
+          <div className="text-center text-[12px] text-[var(--color-text-muted)] py-12">
             No messages recorded in this conversation yet.
           </div>
         ) : (
@@ -215,24 +217,26 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
             const isOutgoing = msg.direction === 'outgoing';
             return (
               <div key={msg.id} className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 shadow-xs relative text-sm ${
-                  isOutgoing 
-                    ? 'bg-emerald-700 text-white rounded-tr-xs' 
-                    : 'bg-[var(--color-surface)] text-[var(--color-text)] rounded-tl-xs border border-[var(--color-border)]'
-                }`}>
-                  <div className="break-words whitespace-pre-wrap leading-relaxed text-[13.5px]">
+                <div 
+                  className={`max-w-[85%] sm:max-w-[70%] px-3.5 py-2 text-[13px] leading-relaxed shadow-[0_1px_2px_0_rgba(0,0,0,0.15)] ${
+                    isOutgoing 
+                      ? 'bg-[var(--color-accent)] text-white rounded-[6px] rounded-tr-[2px]' 
+                      : 'bg-[var(--color-surface)] text-[var(--color-text)] rounded-[6px] rounded-tl-[2px] border border-[var(--color-border)]'
+                  }`}
+                >
+                  <div className="break-words whitespace-pre-wrap">
                     {msg.text_content}
                   </div>
-                  <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 font-medium ${
-                    isOutgoing ? 'text-emerald-200' : 'text-[var(--color-text-muted)]'
+                  <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 font-mono tabular-nums ${
+                    isOutgoing ? 'text-teal-100/70' : 'text-[var(--color-text-muted)]'
                   }`}>
-                    {msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}
+                    <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                     {isOutgoing && (
-                      <span className="ml-0.5">
-                        {msg.status === 'sent' && <Check className="w-3 h-3 text-emerald-200" />}
-                        {msg.status === 'delivered' && <CheckCheck className="w-3 h-3 text-emerald-200" />}
-                        {msg.status === 'read' && <CheckCheck className="w-3 h-3 text-amber-300" />}
-                        {msg.status === 'failed' && <AlertCircle className="w-3 h-3 text-rose-300" />}
+                      <span className="ml-0.5 inline-flex">
+                        {msg.status === 'sent' && <Check className="w-3 h-3 text-teal-100/70" />}
+                        {msg.status === 'delivered' && <CheckCheck className="w-3 h-3 text-teal-100/70" />}
+                        {msg.status === 'read' && <CheckCheck className="w-3 h-3 text-emerald-200" />}
+                        {msg.status === 'failed' && <AlertCircle className="w-3 h-3 text-[var(--color-status-hot)]" />}
                       </span>
                     )}
                   </div>
@@ -244,16 +248,16 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
         <div ref={messagesEndRef} />
       </div>
 
-      {/* AI BOT ACTIVE STATUS BAR */}
+      {/* AI STATUS BANNER */}
       {isAiMode && (
-        <div className="bg-purple-50 dark:bg-purple-950/40 px-4 py-2 text-center text-xs font-semibold text-purple-700 dark:text-purple-300 flex items-center justify-center gap-2 border-t border-purple-100 dark:border-purple-900/40 flex-shrink-0">
-          <Bot className="w-3.5 h-3.5 text-purple-600 animate-pulse" /> 
-          <span>AI Autonomous Mode Active (Staff can type & send manual messages anytime)</span>
+        <div className="bg-[var(--color-surface-elevated)] px-3 py-1.5 text-center text-[11px] text-[var(--color-text-muted)] flex items-center justify-center gap-1.5 border-t border-[var(--color-border)] flex-shrink-0">
+          <Bot className="w-3 h-3 text-[var(--color-accent)]" /> 
+          <span>AI assistant handling automated discovery. Staff can type & send anytime.</span>
         </div>
       )}
 
-      {/* UNIVERSAL MESSAGE COMPOSER (Enabled in all modes) */}
-      <div className="p-3 bg-[var(--color-surface)] border-t border-[var(--color-border)] flex-shrink-0">
+      {/* COMPOSER */}
+      <div className="p-2.5 bg-[var(--color-surface)] border-t border-[var(--color-border)] flex-shrink-0">
         <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
           <textarea
             value={inputText}
@@ -264,49 +268,49 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
                 handleSendMessage();
               }
             }}
-            placeholder={isAiMode ? "Type a message (sent directly from staff)... (Shift+Enter for newline)" : "Type a WhatsApp reply... (Shift+Enter for newline)"}
-            className="flex-1 max-h-32 min-h-[44px] bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+            placeholder="Type WhatsApp reply (Enter to send, Shift+Enter for newline)..."
             rows={1}
+            className="flex-1 max-h-24 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] rounded-[6px] px-3 py-2 text-[13px] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] resize-none"
           />
-          <button 
+          <Button 
             type="submit" 
-            disabled={sending || !inputText.trim()}
-            className="h-11 w-11 flex items-center justify-center bg-[var(--color-primary)] text-white rounded-xl hover:opacity-90 disabled:opacity-50 flex-shrink-0 transition-opacity shadow-xs"
-            title="Send WhatsApp Message"
+            variant="primary" 
+            size="md"
+            disabled={!inputText.trim() || sending}
+            isLoading={sending}
+            leftIcon={<Send className="w-3.5 h-3.5" />}
           >
-            <Send className="w-4 h-4" />
-          </button>
+            Send
+          </Button>
         </form>
       </div>
 
-      {/* MOBILE AI COPILOT BOTTOM-SHEET / DRAWER */}
+      {/* MOBILE COPILOT DRAWER */}
       {mobileCopilotOpen && (
         <div 
-          className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-end"
+          className="xl:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] flex justify-end"
           onClick={() => setMobileCopilotOpen(false)}
         >
           <div 
-            className="w-full max-w-sm bg-[var(--color-surface)] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 border-l border-[var(--color-border)]"
+            className="w-4/5 max-w-sm bg-[var(--color-surface)] h-full flex flex-col border-l border-[var(--color-border)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-surface)]">
-              <div className="flex items-center gap-2 font-bold text-sm text-[var(--color-text)]">
-                <Brain className="w-5 h-5 text-purple-600" />
-                AI Copilot Context
-              </div>
+            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+              <span className="font-medium text-[13px] text-[var(--color-text)]">Lead Intelligence</span>
               <button 
-                onClick={() => setMobileCopilotOpen(false)} 
-                className="p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-elevated)] rounded-lg"
+                onClick={() => setMobileCopilotOpen(false)}
+                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto hide-scrollbar">
               <AICopilot conversationId={conversationId} />
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
