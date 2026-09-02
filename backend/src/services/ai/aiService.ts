@@ -119,7 +119,7 @@ export class OpenRouterProvider implements AIProvider {
       logger.error({ error: errMsg }, 'OpenRouter API request failed');
       // Graceful fallback response
       return {
-        content: 'Thank you for contacting Karjat Properties. Our senior real estate advisor will connect with you shortly on WhatsApp to assist with verified villas and site visits.',
+        content: `Sorry, there was a system error: ${errMsg}. Our senior real estate advisor will connect with you shortly.`,
       };
     }
   }
