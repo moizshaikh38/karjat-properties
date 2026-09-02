@@ -93,12 +93,11 @@ export const processIncomingMessage = async (msg: ProcessedWebhookMessage) => {
 const findOrCreateConversation = async (leadId: string, phone: string) => {
   const client = db.getClient();
   
-  // Find active conversation
+  // Find existing conversation for phone
   const { data: existing } = await client
     .from('whatsapp_conversations')
     .select('*')
     .eq('whatsapp_phone', phone)
-    .eq('status', 'active')
     .single();
 
   if (existing) return existing;

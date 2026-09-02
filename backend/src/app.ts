@@ -64,9 +64,14 @@ app.head('/', (req: Request, res: Response) => {
   res.status(200).end();
 });
 
-// Webhooks
+// Webhooks (Mounted with all common aliases for Fast2SMS and Meta)
 app.use('/api/webhooks/fast2sms', fast2smsWebhookRouter);
 app.use('/api/webhooks/whatsapp', whatsappWebhookRouter);
+app.use('/api/whatsapp/webhook', fast2smsWebhookRouter);
+app.use('/api/webhook', fast2smsWebhookRouter);
+app.use('/webhooks/fast2sms', fast2smsWebhookRouter);
+app.use('/webhooks/whatsapp', whatsappWebhookRouter);
+app.use('/webhook', fast2smsWebhookRouter);
 
 // Apply general API rate limit to all /api routes
 app.use('/api', apiRateLimiter);

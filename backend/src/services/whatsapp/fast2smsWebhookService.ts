@@ -17,24 +17,29 @@ export interface Fast2SMSWebhookPayload {
   message_type?: string;
   type?: string;
   body?: string;
-  text?: string;
-  message?: string;
-  msg?: string;
+  text?: any;
+  message?: any;
+  msg?: any;
   content?: string;
   caption?: string;
   media_url?: string;
   url?: string;
+  media?: string;
   message_id?: string;
   id?: string;
   msg_id?: string;
   context_message_id?: string;
   reply_to_message_id?: string;
   webhook_type?: string;
+  event?: string;
   status?: string;
+  delivery_status?: string;
   timestamp?: number | string;
+  time?: number | string;
   errors?: any;
   error?: any;
   entry?: any[];
+  messages?: any[];
   data?: any;
   [key: string]: any;
 }
@@ -63,31 +68,48 @@ export class Fast2SMSWebhookService {
     try {
       logger.info({ payload }, 'Fast2SMS webhook payload received in service');
 
-      // If it's a Meta-wrapped batch structure (entry[]), handle array
-      if (payload?.entry && Array.isArray(payload.entry)) {
+      if (!payload || typeof payload !== 'object') {
+        return { success: false };
+      }
+
+      // 1. If it's a Meta-wrapped batch structure (entry[]), handle array
+      if (payload.entry && Array.isArray(payload.entry)) {
         return this.handleMetaWrappedPayload(payload);
       }
 
-      // If nested under .data object
-      const targetPayload = payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
+      // 2. If it contains a messages[] array directly
+      const rawMessages = payload.messages || payload.data?.messages;
+      if (Array.isArray(rawMessages) && rawMessages.length > 0) {
+        for (const msg of rawMessages) {
+          const combined = { ...payload, ...msg };
+          const normalized = this.normalizePayload(combined);
+          if (normalized) {
+            await this.handleIncomingMessage(normalized);
+          }
+        }
+        return { success: true };
+      }
+
+      // 3. If nested under .data object
+      const targetPayload = payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)
         ? { ...payload, ...payload.data }
         : payload;
 
-      // Standard direct Fast2SMS JSON payload
+      // 4. Standard Fast2SMS JSON payload
       const normalized = this.normalizePayload(targetPayload);
       if (!normalized) {
         logger.warn({ payload }, 'Fast2SMS webhook payload could not be normalized');
         return { success: false };
       }
 
-      // 1. Idempotency Guard
+      // Idempotency Guard (only for exact duplicate message IDs)
       const isDuplicate = await this.recordWebhookEvent(normalized);
       if (isDuplicate) {
         logger.debug({ eventId: normalized.providerMessageId }, 'Duplicate Fast2SMS webhook event ignored');
         return { success: true, duplicate: true };
       }
 
-      // 2. Route by event type
+      // Route by event type
       if (normalized.type === 'incoming_message') {
         await this.handleIncomingMessage(normalized);
       } else if (normalized.type === 'status_update') {
@@ -129,10 +151,62 @@ export class Fast2SMSWebhookService {
       }
     }
 
+    // Extract text content from all possible variations
+    let text: string | null = null;
+    if (typeof data.text === 'string') text = data.text;
+    else if (data.text && typeof data.text === 'object' && data.text.body) text = data.text.body;
+    else if (typeof data.body === 'string') text = data.body;
+    else if (typeof data.message === 'string') text = data.message;
+    else if (data.message && typeof data.message === 'object' && data.message.text) text = data.message.text;
+    else if (typeof data.msg === 'string') text = data.msg;
+    else if (typeof data.content === 'string') text = data.content;
+    else if (typeof data.caption === 'string') text = data.caption;
+    else if (data.data && typeof data.data.text === 'string') text = data.data.text;
+    else if (data.data && typeof data.data.message === 'string') text = data.data.message;
+
+    // Extract media URL
+    const mediaUrl = data.media_url || data.url || data.media || (data.image ? data.image.link || data.image.url : null) || null;
+
+    // Extract phone number from all possible variations
+    const customerPhone = String(
+      data.from ||
+      data.sender_phone ||
+      data.phone ||
+      data.mobile ||
+      data.sender ||
+      data.wa_id ||
+      data.display_phone_number ||
+      data.contact?.phone ||
+      data.data?.from ||
+      data.data?.mobile ||
+      data.data?.phone ||
+      ''
+    ).trim();
+
     const webhookType = String(data.webhook_type || data.event || '').toLowerCase();
     const statusField = String(data.status || data.delivery_status || '').toLowerCase();
 
-    // Check if this is a status event (sent, delivered, read, failed)
+    // Determine if this is a genuine incoming message (has text/media from a phone number)
+    const hasIncomingContent = (text !== null && String(text).trim().length > 0) || Boolean(mediaUrl);
+
+    if (hasIncomingContent && customerPhone) {
+      const messageType = String(data.message_type || data.type || (mediaUrl ? 'image' : 'text')).toLowerCase();
+      return {
+        provider: 'fast2sms',
+        type: 'incoming_message',
+        phoneNumberId: data.phone_number_id,
+        customerPhone,
+        messageType,
+        text,
+        mediaUrl,
+        providerMessageId: messageId,
+        contextMessageId: data.context_message_id || data.reply_to_message_id || null,
+        timestamp: isoTimestamp,
+        raw: data,
+      };
+    }
+
+    // Check if this is a delivery status event
     const isStatusEvent =
       webhookType === 'status_update' ||
       webhookType === 'on_sent' ||
@@ -159,38 +233,24 @@ export class Fast2SMSWebhookService {
       };
     }
 
-    // Otherwise, treat as incoming message
-    const customerPhone = String(
-      data.from ||
-      data.sender_phone ||
-      data.phone ||
-      data.mobile ||
-      data.sender ||
-      data.wa_id ||
-      data.display_phone_number ||
-      data.contact?.phone ||
-      data.data?.from ||
-      data.data?.mobile ||
-      ''
-    ).trim();
+    // Fallback: If customer phone exists, treat as incoming message even if text is empty
+    if (customerPhone) {
+      return {
+        provider: 'fast2sms',
+        type: 'incoming_message',
+        phoneNumberId: data.phone_number_id,
+        customerPhone,
+        messageType: 'text',
+        text: text || '',
+        mediaUrl: null,
+        providerMessageId: messageId,
+        contextMessageId: null,
+        timestamp: isoTimestamp,
+        raw: data,
+      };
+    }
 
-    const messageType = String(data.message_type || data.type || 'text').toLowerCase();
-    const text = data.body || data.text || data.message || data.msg || data.content || data.caption || data.data?.text || data.data?.message || null;
-    const mediaUrl = data.media_url || data.url || data.media || null;
-
-    return {
-      provider: 'fast2sms',
-      type: 'incoming_message',
-      phoneNumberId: data.phone_number_id,
-      customerPhone,
-      messageType,
-      text,
-      mediaUrl,
-      providerMessageId: messageId,
-      contextMessageId: data.context_message_id || data.reply_to_message_id || null,
-      timestamp: isoTimestamp,
-      raw: data,
-    };
+    return null;
   }
 
   /**
@@ -309,24 +369,35 @@ export class Fast2SMSWebhookService {
     for (const entry of entries) {
       const changes = entry.changes || [];
       for (const change of changes) {
-        if (change.value?.messages) {
-          for (const msg of change.value.messages) {
-            const normalized = this.normalizePayload({
-              ...msg,
-              phone_number_id: change.value.metadata?.phone_number_id,
-              display_phone_number: change.value.metadata?.display_phone_number,
-              webhook_type: 'incoming_message',
-            });
-            if (normalized) await this.handleIncomingMessage(normalized);
+        const value = change.value || {};
+        const messages = value.messages || [];
+
+        for (const message of messages) {
+          const customerPhone = message.from;
+          const text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || null;
+          const mediaUrl = message.image?.url || message.document?.url || null;
+
+          if (customerPhone) {
+            const processedMsg: ProcessedWebhookMessage = {
+              whatsapp_message_id: message.id || `meta-${Date.now()}`,
+              sender_phone: customerPhone,
+              message_type: message.type || 'text',
+              text_content: text,
+              media_url: mediaUrl,
+              timestamp: new Date(Number(message.timestamp || Date.now() / 1000) * 1000).toISOString(),
+              metadata: { raw: message },
+            };
+
+            await processIncomingMessage(processedMsg);
           }
         }
-        if (change.value?.statuses) {
-          for (const statusObj of change.value.statuses) {
-            const normalized = this.normalizePayload({
-              ...statusObj,
-              webhook_type: 'status_update',
-            });
-            if (normalized) await this.handleStatusUpdate(normalized);
+
+        const statuses = value.statuses || [];
+        for (const statusObj of statuses) {
+          const status = statusObj.status;
+          const messageId = statusObj.id;
+          if (messageId && status) {
+            await messageRepo.updateMessageStatus(messageId, status, { raw: statusObj });
           }
         }
       }
