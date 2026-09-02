@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, Building2, KeyRound } from 'lucide-react';
+import { 
+  Eye, EyeOff, Lock, Mail, Building2, ShieldCheck, 
+  Sparkles, CheckCircle2, ArrowRight, Bot, Compass, MapPin
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,27 +18,26 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeLogin = async (loginEmail: string, loginPass: string) => {
     setLoading(true);
     setError('');
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email: loginEmail, password: loginPass });
       const payload = response.data?.data || {};
       const authToken = payload.token || payload.accessToken;
       const authUser = payload.user;
 
       if (authToken && authUser) {
         login(authToken, authUser);
-        toast.success('Welcome back');
+        toast.success('Terminal session authorized');
         navigate('/dashboard');
       } else {
         setError('Authentication succeeded but session token was missing');
       }
     } catch (err: any) {
-      // Fallback for immediate smooth login if backend server is warming up
-      if (email === 'admin@vertexdigitals.com' && password === 'vertex123') {
+      // Instant seamless offline fallback for live client demo
+      if (loginEmail === 'admin@vertexdigitals.com' && loginPass === 'vertex123') {
         login('demo-session-token-vertex-admin', {
           id: '11111111-1111-1111-a111-111111111111',
           name: 'Admin Vertex',
@@ -52,29 +54,159 @@ export default function Login() {
     }
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeLogin(email, password);
+  };
+
+  const handleQuickLogin = () => {
+    setEmail('admin@vertexdigitals.com');
+    setPassword('vertex123');
+    executeLogin('admin@vertexdigitals.com', 'vertex123');
+  };
+
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none animate-entrance">
+    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col lg:flex-row overflow-hidden font-sans select-none text-[var(--color-text)]">
       
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        <div className="flex justify-center mb-4">
-          <div className="w-10 h-10 bg-[var(--color-accent)] rounded-[6px] flex items-center justify-center text-white shadow-[0_1px_3px_0_rgba(0,0,0,0.3)]">
-            <Building2 className="w-5 h-5" />
+      {/* =========================================================================
+          LEFT PANEL: ULTRA-LUXURY EDITORIAL SHOWCASE (Hidden on mobile, 55% on lg)
+          ========================================================================= */}
+      <div className="hidden lg:flex lg:w-7/12 relative flex-col justify-between p-12 overflow-hidden border-r border-[var(--color-border)] bg-[#070a10]">
+        
+        {/* Background Image with Dark Vignette & Architectural Gradient */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-luminosity scale-105 transform duration-1000 transition-transform"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1800&q=80')`
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#090d14] via-[#090d14]/70 to-transparent" />
+        <div className="absolute inset-0 bg-radial from-transparent via-[#090d14]/50 to-[#090d14]" />
+
+        {/* Top Floating Badge */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[4px] bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-medium text-[15px] font-display tracking-tight text-[var(--color-text)] block">
+                Karjat Properties
+              </span>
+              <span className="text-[10.5px] uppercase tracking-widest text-[var(--color-gold-muted)] font-mono">
+                Private Client Brokerage
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 px-3 py-1 bg-[var(--color-surface)]/80 backdrop-blur-md rounded-[4px] border border-[var(--color-border)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-pulse"></span>
+            <span className="text-[11px] font-mono text-[var(--color-text-muted)]">Autonomous AI Engine Active</span>
           </div>
         </div>
-        <h2 className="text-center text-[24px] font-medium font-display tracking-tight text-[var(--color-text)]">
-          Karjat Properties
-        </h2>
-        <p className="mt-1 text-center text-[12px] text-[var(--color-text-muted)]">
-          Real Estate Operations & AI Sales CRM
-        </p>
+
+        {/* Center Hero Copy */}
+        <div className="relative z-10 max-w-xl space-y-6 my-auto pt-16 pb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--color-gold)]/10 text-[var(--color-gold-muted)] border border-[var(--color-gold)]/25 rounded-[4px] text-[11px] font-mono uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5" /> High-Value Land & Luxury Villas
+          </div>
+
+          <h1 className="text-[38px] xl:text-[46px] font-medium font-display leading-[1.15] tracking-tight text-white">
+            Orchestrating multi-crore Karjat estates with intelligent precision.
+          </h1>
+
+          <p className="text-[14.5px] text-[var(--color-text-muted)] leading-relaxed">
+            Directly connecting high net-worth Mumbai & Pune investors to sanctioned NA plots, riverfront pool villas, and 100-Guntha agro-estates across Kashele, Bhilavle & Khandpe.
+          </p>
+
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[var(--color-border)]/60">
+            <div>
+              <span className="text-[20px] font-medium font-display text-white block tabular-nums">₹18.40 Cr</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">Active Pipeline Volume</span>
+            </div>
+            <div>
+              <span className="text-[20px] font-medium font-display text-[var(--color-accent)] block tabular-nums">92%</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">AI Lead Discovery Rate</span>
+            </div>
+            <div>
+              <span className="text-[20px] font-medium font-display text-[var(--color-gold-muted)] block tabular-nums">8 Visits</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">Booked This Weekend</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Security Assurance */}
+        <div className="relative z-10 flex items-center justify-between text-[11px] text-[var(--color-text-muted)]/80 font-mono pt-6 border-t border-[var(--color-border)]/40">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+            256-Bit SSL Encrypted Terminal
+          </span>
+          <span>Fast2SMS Gateway · WhatsApp Cloud Protocol</span>
+        </div>
       </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-sm">
-        <div className="luxury-card py-6 px-5 sm:px-6 shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] rounded-[6px] border border-[var(--color-border)]">
+      {/* =========================================================================
+          RIGHT PANEL: AUTHENTICATION SANCTUARY (Mobile & Desktop)
+          ========================================================================= */}
+      <div className="w-full lg:w-5/12 flex flex-col justify-between p-6 sm:p-12 min-h-screen bg-[var(--color-surface)]/40 backdrop-blur-xl relative z-20">
+        
+        {/* Mobile Header */}
+        <div className="flex lg:hidden items-center justify-between pb-6 border-b border-[var(--color-border)] mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[4px] bg-[var(--color-accent)] text-white flex items-center justify-center shadow-xs">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-semibold text-[14px] font-display text-[var(--color-text)] block">
+                Karjat Properties
+              </span>
+              <span className="text-[10px] text-[var(--color-gold-muted)] font-mono uppercase tracking-wider">
+                Private Client CRM
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-2 py-0.5 rounded border border-[var(--color-accent)]/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse"></span>
+            Online
+          </div>
+        </div>
+
+        {/* Middle Auth Card Form */}
+        <div className="my-auto max-w-sm w-full mx-auto space-y-6 py-6">
+          <div className="space-y-1.5 text-center sm:text-left">
+            <div className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-[10.5px] font-mono text-[var(--color-text-muted)] mb-1">
+              <Lock className="w-3 h-3 text-[var(--color-gold-muted)]" /> Authorized Personnel Only
+            </div>
+            <h2 className="text-[26px] sm:text-[30px] font-medium font-display tracking-tight text-[var(--color-text)]">
+              Welcome back
+            </h2>
+            <p className="text-[12.5px] text-[var(--color-text-muted)]">
+              Sign in to manage Karjat land catalogs, lead pipelines, and AI conversation streams.
+            </p>
+          </div>
+
+          {/* Quick Demo Access Trigger */}
+          <button
+            type="button"
+            onClick={handleQuickLogin}
+            className="w-full p-2.5 bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 rounded-[6px] text-left transition-colors flex items-center justify-between group cursor-pointer"
+          >
+            <div className="space-y-0.5">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--color-accent)] font-semibold block">
+                ⚡ 1-Click Client Demo Sign-In
+              </span>
+              <span className="text-[12px] text-[var(--color-text)] font-mono">
+                admin@vertexdigitals.com
+              </span>
+            </div>
+            <ArrowRight className="w-4 h-4 text-[var(--color-accent)] group-hover:translate-x-0.5 transition-transform" />
+          </button>
+
+          {/* Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
-                Brokerage Email
+              <label htmlFor="email" className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+                Brokerage Email Address
               </label>
               <div className="relative">
                 <input
@@ -84,16 +216,19 @@ export default function Login() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-2 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3.5 py-2.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] placeholder-[var(--color-text-muted)]/40 transition-colors"
                   placeholder="admin@vertexdigitals.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="password" className="block text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                  Access Key / Password
+                </label>
+                <span className="text-[10.5px] text-[var(--color-gold-muted)] font-mono">Demo: vertex123</span>
+              </div>
               <div className="relative">
                 <input
                   id="password"
@@ -102,13 +237,13 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] pl-3 pr-9 py-2 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
+                  className="block w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] pl-3.5 pr-10 py-2.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono transition-colors"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -116,7 +251,7 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="p-2 bg-[var(--color-status-hot)]/10 border border-[var(--color-status-hot)]/20 rounded-[4px] text-[11.5px] text-[var(--color-status-hot)] text-center">
+              <div className="p-2.5 bg-[var(--color-status-hot)]/10 border border-[var(--color-status-hot)]/25 rounded-[4px] text-[12px] text-[var(--color-status-hot)] text-center animate-shake">
                 {error}
               </div>
             )}
@@ -124,21 +259,28 @@ export default function Login() {
             <Button
               type="submit"
               variant="primary"
-              size="md"
-              className="w-full mt-2"
+              size="lg"
+              className="w-full mt-2 h-10 text-[13.5px] font-medium shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] cursor-pointer"
               isLoading={loading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Sign in to Workspace
+              Enter Brokerage Workspace
             </Button>
           </form>
 
-          <div className="mt-4 pt-3 border-t border-[var(--color-border)]/60 text-center">
+          <div className="pt-3 text-center">
             <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
-              Admin Access: <span className="text-[var(--color-text)]">admin@vertexdigitals.com</span> · <span className="text-[var(--color-accent)]">vertex123</span>
+              Role: <span className="text-[var(--color-text)]">Admin Master Account</span>
             </span>
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="pt-6 border-t border-[var(--color-border)]/40 text-center text-[11px] text-[var(--color-text-muted)] font-mono">
+          © {new Date().getFullYear()} Karjat Properties CRM · Vertex Digitals Core
+        </div>
       </div>
+
     </div>
   );
 }

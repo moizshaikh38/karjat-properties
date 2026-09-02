@@ -4,5 +4,5 @@ import { it, expect } from 'vitest';
 
 it('renders Karjat Properties login page by default', () => {
   render(<App />);
-  expect(screen.getByText('Karjat Properties')).toBeTruthy();
+  expect(screen.getAllByText('Karjat Properties').length).toBeGreaterThan(0);
 });
