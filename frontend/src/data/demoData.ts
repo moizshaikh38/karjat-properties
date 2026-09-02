@@ -457,8 +457,8 @@ export const DEMO_CAMPAIGNS = [
 export const DEMO_TEAM = [
   {
     id: 'usr-1',
-    name: 'Moiz Shaikh',
-    email: 'moiz@karjatproperties.com',
+    name: 'Admin Vertex',
+    email: 'admin@vertexdigitals.com',
     role: 'admin',
     phone: '+91 7219311866',
   },

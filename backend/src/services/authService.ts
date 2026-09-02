@@ -15,6 +15,14 @@ import {
 } from '../types/user';
 
 const DEV_USERS: Record<string, { id: string; name: string; email: string; role: 'admin' | 'manager' | 'agent'; pass: string; phone: string }> = {
+  'admin@vertexdigitals.com': {
+    id: '11111111-1111-1111-a111-111111111111',
+    name: 'Admin Vertex',
+    email: 'admin@vertexdigitals.com',
+    role: 'admin',
+    pass: 'vertex123',
+    phone: '+917219311866',
+  },
   'admin@example.com': {
     id: '11111111-1111-1111-a111-111111111111',
     name: 'Admin User',
@@ -130,26 +138,25 @@ export const loginUser = async (input: LoginInput): Promise<{ user: SafeUser; ac
     logger.warn({ email: input.email }, 'Database lookup failed, falling back to dev credentials');
   }
 
-  if (!user && env.NODE_ENV !== 'production') {
-    const devUser = DEV_USERS[input.email.toLowerCase().trim()];
-    if (devUser && input.password === devUser.pass) {
-      const accessToken = generateAccessToken({ userId: devUser.id, role: devUser.role });
-      await auditRepo.logAuditEvent(devUser.id, 'LOGIN_SUCCESS', 'users', devUser.id);
-      return {
-        user: {
-          id: devUser.id,
-          name: devUser.name,
-          email: devUser.email,
-          phone: devUser.phone,
-          role: devUser.role,
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        accessToken,
-        token: accessToken,
-      } as any;
-    }
+  const normalizedEmail = (input.email || '').toLowerCase().trim();
+  const devUser = DEV_USERS[normalizedEmail];
+  if (devUser && input.password === devUser.pass) {
+    const accessToken = generateAccessToken({ userId: devUser.id, role: devUser.role });
+    await auditRepo.logAuditEvent(devUser.id, 'LOGIN_SUCCESS', 'users', devUser.id);
+    return {
+      user: {
+        id: devUser.id,
+        name: devUser.name,
+        email: devUser.email,
+        phone: devUser.phone,
+        role: devUser.role,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      accessToken,
+      token: accessToken,
+    } as any;
   }
 
   if (!user || !user.password_hash) {

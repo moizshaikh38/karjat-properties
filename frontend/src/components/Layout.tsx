@@ -341,7 +341,7 @@ export const Layout: React.FC = () => {
 
             <div className="p-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-[var(--color-text-muted)] truncate">{user?.email || 'admin@karjatproperties.com'}</span>
+                <span className="text-[11px] text-[var(--color-text-muted)] truncate">{user?.email || 'admin@vertexdigitals.com'}</span>
                 <button
                   onClick={toggleTheme}
                   className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
