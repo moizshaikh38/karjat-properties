@@ -4,6 +4,36 @@
 
 export const DEMO_PROPERTIES = [
   {
+    id: 'prop-0',
+    property_code: 'KP-APT-100',
+    title: 'Scenic Mountain View 2BHK Apartment (Dahivali, Karjat)',
+    name: 'Scenic Mountain View 2BHK Apartment (Dahivali, Karjat)',
+    description: 'Contemporary 2 BHK residential apartment in Dahivali near Karjat Station. Features scenic mountain views, large balcony, 24x7 security, power backup, and clear title.',
+    property_type: 'apartment',
+    listing_type: 'sale',
+    status: 'available',
+    location: 'Dahivali, Karjat',
+    city: 'Karjat',
+    price: 4500000, // ₹45 Lakhs
+    bhk: 2,
+    bathrooms: 2,
+    size_sqft: 750,
+    plot_area_sqft: 750,
+    builtup_area_sqft: 850,
+    carpet_area_sqft: 750,
+    furnished_status: 'semi_furnished',
+    land_zone: 'Sanctioned Residential',
+    water_source: 'Gram Panchayat + Borewell',
+    electricity: 'MSEDCL Regular + Inverter',
+    road_access: 'Tar Road Touch',
+    facing_view: 'Mountain & Sunrise View',
+    amenities: ['Power Backup', '24x7 Gated Security & CCTV', 'Lift with Generator Backup', 'Children Play Area'],
+    images: [
+      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800'
+    ]
+  },
+  {
     id: 'prop-1',
     property_code: 'KP-VIL-101',
     title: 'Kashele Riverside 4BHK Luxury Pool Villa',

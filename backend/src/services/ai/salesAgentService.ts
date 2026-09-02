@@ -177,7 +177,7 @@ export class SalesAgentService {
             try {
               switch (call.name) {
                 case 'searchProperties':
-                  toolResult = await executePropertySearch(ctx.lead.id);
+                  toolResult = await executePropertySearch(ctx.lead.id, call.arguments);
                   break;
                 case 'getPropertyDetails':
                   toolResult = await executeGetPropertyDetails(call.arguments);

@@ -4,38 +4,80 @@ import { logger } from '../../../utils/logger';
 
 export const propertySearchToolDefinition: AITool = {
   name: 'searchProperties',
-  description: 'Searches for exact matches and alternatives based on the customer\'s verified requirements in the database.',
+  description: 'Searches for verified matching properties and alternatives in Karjat based on BHK, budget/price, location, or property type.',
   parameters: {
     type: 'object',
-    properties: {},
+    properties: {
+      bhk: {
+        type: 'number',
+        description: 'Number of bedrooms (e.g. 1, 2, 3, 4)'
+      },
+      budget: {
+        type: 'number',
+        description: 'Budget or maximum price in INR (e.g. 4500000 for 45 Lakhs, 24000000 for 2.4 Cr)'
+      },
+      max_price: {
+        type: 'number',
+        description: 'Maximum price in INR'
+      },
+      min_price: {
+        type: 'number',
+        description: 'Minimum price in INR'
+      },
+      location: {
+        type: 'string',
+        description: 'Specific area in Karjat (e.g. Kashele, Dahivali, Bhilavle, Khandpe, Kadav)'
+      },
+      property_type: {
+        type: 'string',
+        enum: ['villa', 'apartment', 'flat', 'plot', 'farmhouse', 'commercial', 'bungalow'],
+        description: 'Type of property'
+      }
+    },
     required: []
   }
 };
 
-export const executePropertySearch = async (leadId: string) => {
+export const executePropertySearch = async (leadId: string, args: any = {}) => {
   try {
-    const { exactMatches, alternatives } = await findMatchingProperties(leadId);
+    const { exactMatches, alternatives, requirements } = await findMatchingProperties(leadId, {
+      bhk: args.bhk,
+      budget: args.budget || args.max_price,
+      max_price: args.max_price || args.budget,
+      min_price: args.min_price,
+      location: args.location,
+      property_type: args.property_type,
+      limit: 3
+    });
     
     return {
       success: true,
       exactMatches: exactMatches.map(p => ({
         id: p.id,
-        name: p.name,
-        location: p.location_city,
+        name: p.name || p.title,
+        title: p.title || p.name,
+        location: p.location_city || p.location || 'Karjat',
         price: Number(p.price),
+        priceFormatted: Number(p.price) >= 10000000 ? `₹${(Number(p.price) / 10000000).toFixed(2)} Cr` : `₹${(Number(p.price) / 100000).toFixed(0)} Lakhs`,
         bhk: p.bhk,
         propertyType: p.property_type,
+        carpetArea: p.carpet_area_sqft || p.area_sqft,
         amenities: p.amenities,
+        description: p.description,
         matchReasons: p.matchReasons
       })),
       alternatives: alternatives.map(p => ({
         id: p.id,
-        name: p.name,
-        location: p.location_city,
+        name: p.name || p.title,
+        title: p.title || p.name,
+        location: p.location_city || p.location || 'Karjat',
         price: Number(p.price),
+        priceFormatted: Number(p.price) >= 10000000 ? `₹${(Number(p.price) / 10000000).toFixed(2)} Cr` : `₹${(Number(p.price) / 100000).toFixed(0)} Lakhs`,
         bhk: p.bhk,
         propertyType: p.property_type,
+        carpetArea: p.carpet_area_sqft || p.area_sqft,
         amenities: p.amenities,
+        description: p.description,
         matchReasons: p.matchReasons
       }))
     };
