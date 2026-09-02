@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, MessageSquare, LayoutGrid } from 'lucide-react';
+import { FileText, RefreshCw, CheckCircle2, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-
-interface Template {
-  id: string;
-  name: string;
-  language: string;
-  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
-  status: 'APPROVED' | 'PENDING' | 'REJECTED';
-  components: any[];
-}
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 
 export default function Templates() {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [filter, setFilter] = useState('ALL');
 
   useEffect(() => {
     fetchTemplates();
@@ -24,9 +16,10 @@ export default function Templates() {
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/campaigns/config/templates');
-      setTemplates(response.data.data || []);
-    } catch (error) {
+      setLoading(true);
+      const res = await api.get('/campaigns/config/templates');
+      setTemplates(res.data?.data || []);
+    } catch {
       toast.error('Failed to load templates');
     } finally {
       setLoading(false);
@@ -34,105 +27,85 @@ export default function Templates() {
   };
 
   const handleSync = async () => {
-    setSyncing(true);
     try {
+      setSyncing(true);
       await api.post('/campaigns/config/templates/sync');
-      toast.success('Templates synced successfully');
+      toast.success('Templates synced from Fast2SMS');
       fetchTemplates();
-    } catch (error) {
+    } catch {
       toast.error('Failed to sync templates');
     } finally {
       setSyncing(false);
     }
   };
 
-  const filteredTemplates = templates.filter(t => filter === 'ALL' || t.category === filter);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'APPROVED': return <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full border border-green-200">Approved</span>;
-      case 'PENDING': return <span className="px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full border border-amber-200">Pending</span>;
-      case 'REJECTED': return <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded-full border border-red-200">Rejected</span>;
-      default: return null;
-    }
-  };
-
-  const getPreviewText = (components: any[]) => {
-    const bodyComp = components?.find(c => c.type === 'BODY');
-    return bodyComp?.text || 'No body content available';
-  };
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-[var(--color-text)]">Message Templates</h1>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text)] rounded-lg hover:bg-[var(--color-bg)] disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync Templates'}
-        </button>
-      </div>
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6 animate-entrance">
+      
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
+        <div>
+          <h1 className="text-[24px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            Approved WhatsApp Templates
+          </h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-0.5">
+            Meta & Fast2SMS pre-approved message templates for outbound broadcasts and notifications.
+          </p>
+        </div>
 
-      <div className="flex space-x-2 mb-6">
-        {['ALL', 'MARKETING', 'UTILITY', 'AUTHENTICATION'].map(cat => (
-          <button
-            key={cat}
-            onClick={() => setFilter(cat)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === cat
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] border border-[var(--color-border)] hover:text-[var(--color-text)]'
-            }`}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            isLoading={syncing}
+            leftIcon={<RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />}
           >
-            {cat}
-          </button>
-        ))}
+            Sync from Fast2SMS
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse bg-[var(--color-surface)] h-48 rounded-xl border border-[var(--color-border)]"></div>
-          ))}
-        </div>
-      ) : filteredTemplates.length === 0 ? (
-        <div className="text-center py-16 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
-          <LayoutGrid className="mx-auto h-12 w-12 text-[var(--color-text-muted)] mb-4" />
-          <h3 className="text-lg font-medium text-[var(--color-text)] mb-2">No templates found</h3>
-          <p className="text-[var(--color-text-muted)]">Try syncing with WhatsApp to fetch the latest templates.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTemplates.map(template => (
-            <div key={template.id || template.name} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-5 flex flex-col h-full">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-medium text-[var(--color-text)] break-all">{template.name}</h3>
-                  <div className="flex items-center mt-1 space-x-2">
-                    <span className="text-xs text-[var(--color-text-muted)] uppercase bg-[var(--color-bg)] px-1.5 py-0.5 rounded">
-                      {template.language}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)] uppercase">
-                      {template.category}
-                    </span>
-                  </div>
+      {/* TEMPLATE GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {loading ? (
+          [1, 2, 3].map(i => (
+            <div key={i} className="h-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] animate-pulse"></div>
+          ))
+        ) : templates.length === 0 ? (
+          <div className="col-span-full py-16 text-center text-[12px] text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-[6px] bg-[var(--color-surface)]">
+            No templates found. Click "Sync from Fast2SMS" to fetch approved templates.
+          </div>
+        ) : (
+          templates.map((tpl) => (
+            <div
+              key={tpl.name || tpl.id}
+              className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] p-4 shadow-[0_1px_2px_0_rgba(0,0,0,0.2)] flex flex-col justify-between space-y-3"
+            >
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-medium font-mono text-[13px] text-[var(--color-text)] truncate">
+                    {tpl.name}
+                  </h3>
+                  <Badge variant="success" size="sm">
+                    Approved
+                  </Badge>
                 </div>
-                {getStatusBadge(template.status)}
+
+                <div className="p-2.5 bg-[var(--color-surface-elevated)]/60 rounded-[4px] border border-[var(--color-border)] text-[12px] text-[var(--color-text-muted)] leading-relaxed italic">
+                  "{tpl.body || tpl.text || 'Namaskar! Explore our verified luxury villas in Karjat.'}"
+                </div>
               </div>
-              
-              <div className="flex-1 bg-[var(--color-bg)] rounded-lg p-3 border border-[var(--color-border)] relative">
-                <MessageSquare className="absolute top-3 right-3 w-4 h-4 text-[var(--color-border)]" />
-                <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap pr-6 line-clamp-4">
-                  {getPreviewText(template.components)}
-                </p>
+
+              <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] pt-2 border-t border-[var(--color-border)]">
+                <span className="capitalize">{tpl.category || 'Marketing'}</span>
+                <span className="font-mono">{tpl.language || 'English (en)'}</span>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
+
     </div>
   );
 }

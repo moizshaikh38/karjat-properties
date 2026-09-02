@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
-import { Megaphone, Plus, BarChart2, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Megaphone, Plus, BarChart2, Calendar, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 
 interface Campaign {
   id: string;
@@ -22,6 +24,7 @@ interface Campaign {
 }
 
 export default function Campaigns() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,8 +34,11 @@ export default function Campaigns() {
 
   const fetchCampaigns = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/campaigns');
-      setCampaigns(response.data.data || []);
+      const raw = response.data?.data;
+      const list = raw?.campaigns || (Array.isArray(raw) ? raw : []);
+      setCampaigns(list);
     } catch (error) {
       toast.error('Failed to load campaigns');
     } finally {
@@ -40,98 +46,109 @@ export default function Campaigns() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'scheduled': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'sending': return 'bg-amber-100 text-amber-800 border-amber-200 animate-pulse';
-      case 'sent': return 'bg-green-100 text-green-800 border-green-200';
-      case 'paused': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-[var(--color-text)]">Campaigns</h1>
-        <Link
-          to="/campaigns/new"
-          className="flex items-center px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          New Campaign
-        </Link>
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto flex flex-col h-full bg-[var(--color-bg)] animate-entrance">
+      
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)] mb-5">
+        <div>
+          <h1 className="text-[24px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            WhatsApp Broadcast Campaigns
+          </h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-0.5">
+            Broadcast verified Karjat projects, weekend site-visit invitations, and price updates.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchCampaigns} 
+            isLoading={loading}
+            leftIcon={<RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />}
+          >
+            Sync
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/campaigns/new')}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            New Broadcast
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse bg-[var(--color-surface)] h-24 rounded-xl border border-[var(--color-border)]"></div>
-          ))}
-        </div>
-      ) : campaigns.length === 0 ? (
-        <div className="text-center py-16 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
-          <Megaphone className="mx-auto h-12 w-12 text-[var(--color-text-muted)] mb-4" />
-          <h3 className="text-lg font-medium text-[var(--color-text)] mb-2">No campaigns yet</h3>
-          <p className="text-[var(--color-text-muted)] mb-6">Create your first broadcast campaign to engage your leads.</p>
-          <Link
-            to="/campaigns/new"
-            className="inline-flex items-center px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90"
-          >
-            Create Campaign
-          </Link>
-        </div>
-      ) : (
-        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-[var(--color-bg)] border-b border-[var(--color-border)]">
-              <tr>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Campaign</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Status</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Performance</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Created</th>
+      {/* DENSE TABLE */}
+      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px] border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">
+                <th className="py-2.5 px-4 font-medium">Campaign Name</th>
+                <th className="py-2.5 px-4 font-medium">Template</th>
+                <th className="py-2.5 px-4 font-medium">Recipients</th>
+                <th className="py-2.5 px-4 font-medium">Delivery Stats (Sent / Delivered / Read)</th>
+                <th className="py-2.5 px-4 font-medium">Status</th>
+                <th className="py-2.5 px-4 text-right font-medium">Created Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {campaigns.map(campaign => (
-                <tr key={campaign.id} className="hover:bg-[var(--color-bg)] transition-colors cursor-pointer">
-                  <td className="p-4">
-                    <div className="font-medium text-[var(--color-text)]">{campaign.name}</div>
-                    <div className="text-sm text-[var(--color-text-muted)] mt-1">Template: {campaign.template_name}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
-                      {campaign.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-sm text-[var(--color-text)] mb-2">
-                      {campaign.sent_count} / {campaign.total_recipients} Sent
-                    </div>
-                    <div className="flex h-2 bg-[var(--color-bg)] rounded-full overflow-hidden max-w-[200px]">
-                      <div className="bg-blue-500" style={{ width: `${(campaign.sent_count / campaign.total_recipients) * 100}%` }}></div>
-                      <div className="bg-green-500" style={{ width: `${(campaign.delivered_count / campaign.total_recipients) * 100}%` }}></div>
-                    </div>
-                    <div className="flex space-x-3 text-xs text-[var(--color-text-muted)] mt-2">
-                      <span title="Delivered">{campaign.delivered_count} D</span>
-                      <span title="Read">{campaign.read_count} R</span>
-                      <span title="Replied">{campaign.replied_count} Re</span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-[var(--color-text-muted)]">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {format(new Date(campaign.created_at), 'MMM d, yyyy')}
-                    </div>
+              {loading ? (
+                [1, 2, 3].map(i => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-36"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-28"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-16"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-48"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-16"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-20 ml-auto"></div></td>
+                  </tr>
+                ))
+              ) : campaigns.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-[12px] text-[var(--color-text-muted)]">
+                    No WhatsApp campaigns launched yet. Click "New Broadcast" to start.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                campaigns.map(c => (
+                  <tr key={c.id} className="hover:bg-[var(--color-surface-elevated)]/40 transition-colors">
+                    <td className="py-3 px-4 font-medium font-display text-[14px] text-[var(--color-text)]">
+                      {c.name}
+                    </td>
+
+                    <td className="py-3 px-4 font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {c.template_name || 'project_launch_karjat'}
+                    </td>
+
+                    <td className="py-3 px-4 font-mono text-[12px] text-[var(--color-text)] tabular-nums">
+                      {c.total_recipients || 0}
+                    </td>
+
+                    <td className="py-3 px-4 text-[12px] font-mono tabular-nums text-[var(--color-text-muted)]">
+                      <span className="text-[var(--color-text)]">{c.sent_count || 0}</span> sent · <span className="text-[var(--color-accent)]">{c.delivered_count || 0}</span> deliv · <span className="text-[var(--color-status-warm)]">{c.read_count || 0}</span> read
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <Badge variant={c.status === 'sent' ? 'success' : c.status === 'sending' ? 'warm' : 'default'}>
+                        {c.status || 'Draft'}
+                      </Badge>
+                    </td>
+
+                    <td className="py-3 px-4 text-right text-[11px] text-[var(--color-text-muted)] tabular-nums">
+                      {c.created_at ? format(new Date(c.created_at), 'MMM d, yyyy') : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
+
     </div>
   );
 }

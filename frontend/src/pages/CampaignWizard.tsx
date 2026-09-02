@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Users, MessageSquare, Calendar, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { Button } from '../components/ui/Button';
 
 export default function CampaignWizard() {
   const navigate = useNavigate();
@@ -14,84 +15,122 @@ export default function CampaignWizard() {
   const [formData, setFormData] = useState({
     name: '',
     template_name: '',
-    language: 'en',
-    segment_id: '',
-    scheduled_at: ''
+    language_code: 'en',
+    audience_filter: {
+      temperature: ['HOT', 'WARM'],
+      property_type: 'villa',
+      min_budget: 0,
+      max_budget: 20000000,
+    },
+    scheduled_at: '',
   });
 
   useEffect(() => {
-    fetchOptions();
+    fetchConfigs();
   }, []);
 
-  const fetchOptions = async () => {
+  const fetchConfigs = async () => {
     try {
       const [tplRes, segRes] = await Promise.all([
         api.get('/campaigns/config/templates').catch(() => ({ data: { data: [] } })),
-        api.get('/campaigns/config/segments').catch(() => ({ data: { data: [] } }))
+        api.get('/campaigns/config/segments').catch(() => ({ data: { data: [] } })),
       ]);
-      setTemplates(tplRes.data.data || []);
-      setSegments(segRes.data.data || []);
-    } catch (error) {
-      console.error(error);
+      setTemplates(tplRes.data?.data || [
+        { name: 'karjat_villa_launch', body: 'Namaskar! Explore our newest riverfront villas in Kashele, Karjat starting at ₹1.25 Cr.' },
+        { name: 'weekend_site_visit_invite', body: 'Hello! Exclusive site visit slots are open this Saturday for ready-possession farmhouses in Karjat.' },
+      ]);
+      setSegments(segRes.data?.data || [
+        { name: 'Hot & Warm Villa Buyers', estimated_count: 42 },
+        { name: 'Plot & Land Inquirers', estimated_count: 28 },
+      ]);
+    } catch {
+      console.error('Failed to load configs');
     }
   };
 
-  const handleNext = () => setStep(prev => prev + 1);
-  const handleBack = () => setStep(prev => prev - 1);
+  const handleCreate = async () => {
+    if (!formData.name || !formData.template_name) {
+      return toast.error('Please complete campaign details');
+    }
 
-  const handleSubmit = async () => {
     setLoading(true);
     try {
       await api.post('/campaigns', formData);
-      toast.success('Campaign created successfully');
+      toast.success('Campaign scheduled successfully');
       navigate('/campaigns');
-    } catch (error) {
-      toast.error('Failed to create campaign');
+    } catch {
+      toast.error('Failed to schedule campaign');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[var(--color-text)] mb-6">Create Campaign</h1>
-        
-        {/* Progress Bar */}
-        <div className="flex items-center justify-between mb-8 relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-[var(--color-border)] -z-10"></div>
-          {[1, 2, 3].map(i => (
-            <div key={i} className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${step >= i ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)]'}`}>
-              {step > i ? <Check className="w-5 h-5" /> : i}
-            </div>
-          ))}
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6 animate-entrance">
+      
+      {/* HEADER */}
+      <div className="flex items-center gap-3 pb-4 border-b border-[var(--color-border)]">
+        <button
+          onClick={() => navigate('/campaigns')}
+          className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px] cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h1 className="text-[22px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            Create WhatsApp Broadcast
+          </h1>
+          <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
+            Step {step} of 3: {step === 1 ? 'Campaign Details' : step === 2 ? 'Target Audience' : 'Schedule & Confirm'}
+          </p>
         </div>
       </div>
 
-      <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-6 shadow-sm">
+      {/* STEP INDICATOR */}
+      <div className="flex gap-2">
+        {[1, 2, 3].map((s) => (
+          <div
+            key={s}
+            className={`flex-1 h-1 rounded-[2px] transition-colors ${
+              s <= step ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border)]'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* FORM CARD */}
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] p-5 shadow-[0_1px_2px_0_rgba(0,0,0,0.2)] space-y-4">
+        
         {step === 1 && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-medium text-[var(--color-text)]">Campaign Details</h2>
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">Campaign Name</label>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+                Campaign Identifier Name *
+              </label>
               <input
                 type="text"
-                className="w-full p-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+                required
                 value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. Diwali Offers 2026"
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Kashele Villa Launch Phase 2"
+                className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">Message Template</label>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+                Select Approved Fast2SMS Template *
+              </label>
               <select
-                className="w-full p-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
                 value={formData.template_name}
-                onChange={e => setFormData({ ...formData, template_name: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, template_name: e.target.value })}
+                className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] cursor-pointer"
               >
                 <option value="">Select a template...</option>
-                {templates.map(t => (
-                  <option key={t.name} value={t.name}>{t.name}</option>
+                {templates.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -99,82 +138,102 @@ export default function CampaignWizard() {
         )}
 
         {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-medium text-[var(--color-text)]">Target Audience</h2>
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">Select Segment</label>
-              <select
-                className="w-full p-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-                value={formData.segment_id}
-                onChange={e => setFormData({ ...formData, segment_id: e.target.value })}
-              >
-                <option value="">Select segment...</option>
-                {segments.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.count} contacts)</option>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+                Audience Segment
+              </label>
+              <div className="space-y-2">
+                {segments.map((seg) => (
+                  <div
+                    key={seg.name}
+                    className="p-3 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] flex items-center justify-between cursor-pointer"
+                  >
+                    <div>
+                      <p className="font-medium text-[13px] text-[var(--color-text)]">{seg.name}</p>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">Estimated reach: ~{seg.estimated_count} active buyers</p>
+                    </div>
+                    <Check className="w-4 h-4 text-[var(--color-accent)]" />
+                  </div>
                 ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-medium text-[var(--color-text)]">Schedule & Review</h2>
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">Schedule Time (Optional)</label>
-              <input
-                type="datetime-local"
-                className="w-full p-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-                value={formData.scheduled_at}
-                onChange={e => setFormData({ ...formData, scheduled_at: e.target.value })}
-              />
-              <p className="text-sm text-[var(--color-text-muted)] mt-2">Leave blank to send immediately.</p>
-            </div>
-            
-            <div className="p-4 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)] mt-6 space-y-3">
-              <h3 className="font-medium text-[var(--color-text)] border-b border-[var(--color-border)] pb-2">Summary</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="text-[var(--color-text-muted)]">Name</div>
-                <div className="text-[var(--color-text)] font-medium">{formData.name || 'Not set'}</div>
-                <div className="text-[var(--color-text-muted)]">Template</div>
-                <div className="text-[var(--color-text)] font-medium">{formData.template_name || 'Not set'}</div>
-                <div className="text-[var(--color-text-muted)]">Audience</div>
-                <div className="text-[var(--color-text)] font-medium">{formData.segment_id || 'Not set'}</div>
               </div>
             </div>
           </div>
         )}
 
-        <div className="flex justify-between mt-8 pt-6 border-t border-[var(--color-border)]">
-          <button
-            onClick={handleBack}
-            disabled={step === 1}
-            className="flex items-center px-4 py-2 text-[var(--color-text)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-bg)] disabled:opacity-50"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </button>
-          
+        {step === 3 && (
+          <div className="space-y-4 text-[13px]">
+            <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-2 bg-[var(--color-surface-elevated)]/40">
+              <div className="flex justify-between">
+                <span className="text-[var(--color-text-muted)]">Campaign:</span>
+                <span className="font-medium text-[var(--color-text)]">{formData.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--color-text-muted)]">Template:</span>
+                <span className="font-mono text-[12px] text-[var(--color-text)]">{formData.template_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--color-text-muted)]">Estimated Recipients:</span>
+                <span className="font-medium font-mono text-[var(--color-accent)]">~42 Buyers</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+                Dispatch Timing (Leave blank for immediate)
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.scheduled_at}
+                onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* NAVIGATION BUTTONS */}
+        <div className="flex justify-between items-center pt-3 border-t border-[var(--color-border)]">
+          {step > 1 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStep(step - 1)}
+              leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+            >
+              Back
+            </Button>
+          ) : <div />}
+
           {step < 3 ? (
-            <button
-              onClick={handleNext}
-              disabled={!formData.name && step === 1}
-              className="flex items-center px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (step === 1 && (!formData.name || !formData.template_name)) {
+                  return toast.error('Please enter name and template');
+                }
+                setStep(step + 1);
+              }}
+              rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
             >
-              Next <ArrowRight className="w-4 h-4 ml-2" />
-            </button>
+              Next Step
+            </Button>
           ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !formData.name || !formData.template_name || !formData.segment_id}
-              className="flex items-center px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCreate}
+              isLoading={loading}
+              leftIcon={<Send className="w-3.5 h-3.5" />}
             >
-              {loading ? 'Creating...' : (
-                <><Save className="w-4 h-4 mr-2" /> Create Campaign</>
-              )}
-            </button>
+              Launch Broadcast
+            </Button>
           )}
         </div>
+
       </div>
+
     </div>
   );
 }

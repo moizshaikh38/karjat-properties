@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { format, isPast } from 'date-fns';
-import { Calendar, User, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, User, Clock, AlertCircle, PhoneCall, RefreshCw, CheckCircle2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 
 interface Followup {
   id: string;
@@ -25,20 +27,19 @@ export default function Followups() {
 
   const fetchFollowups = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/followups');
       const raw = response.data?.data;
       const list = raw?.followups || (Array.isArray(raw) ? raw : []);
       setFollowups(list);
     } catch (error) {
-      toast.error('Failed to load followups');
+      toast.error('Failed to load follow-up sequences');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Are you sure you want to cancel this follow-up?')) return;
-    
     try {
       await api.post(`/followups/${id}/cancel`);
       toast.success('Follow-up cancelled');
@@ -61,32 +62,43 @@ export default function Followups() {
     return true;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'sent': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'failed': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-[var(--color-text)]">Follow-ups</h1>
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto flex flex-col h-full bg-[var(--color-bg)] animate-entrance">
+      
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)] mb-5">
+        <div>
+          <h1 className="text-[24px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            Automated Follow-up Sequences
+          </h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-0.5">
+            Timed reminders, site-visit re-engagement, and brochure follow-up triggers.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchFollowups} 
+            isLoading={loading}
+            leftIcon={<RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />}
+          >
+            Sync
+          </Button>
+        </div>
       </div>
 
-      <div className="flex space-x-1 border-b border-[var(--color-border)] mb-6 overflow-x-auto">
+      {/* FILTER TABS */}
+      <div className="flex gap-1 p-0.5 bg-[var(--color-surface-elevated)] rounded-[6px] border border-[var(--color-border)] w-fit mb-4">
         {['All', 'Pending', 'Overdue', 'Sent', 'Completed', 'Cancelled'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${
+            className={`px-3 py-1 text-[12px] font-medium rounded-[4px] transition-colors cursor-pointer ${
               activeTab === tab
-                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                ? 'bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] shadow-xs'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
             }`}
           >
             {tab}
@@ -94,75 +106,90 @@ export default function Followups() {
         ))}
       </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse bg-[var(--color-surface)] h-20 rounded-xl border border-[var(--color-border)]"></div>
-          ))}
-        </div>
-      ) : filteredFollowups.length === 0 ? (
-        <div className="text-center py-12 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]">
-          <AlertCircle className="mx-auto h-12 w-12 text-[var(--color-text-muted)] mb-3" />
-          <p className="text-[var(--color-text-muted)] text-lg">No follow-ups scheduled.</p>
-        </div>
-      ) : (
-        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-[var(--color-bg)] border-b border-[var(--color-border)]">
-              <tr>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Lead</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Type</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Scheduled For</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase">Status</th>
-                <th className="p-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase text-right">Actions</th>
+      {/* DENSE TABLE */}
+      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px] border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">
+                <th className="py-2.5 px-4 font-medium">Buyer Contact</th>
+                <th className="py-2.5 px-4 font-medium">Sequence Type</th>
+                <th className="py-2.5 px-4 font-medium">Scheduled Time</th>
+                <th className="py-2.5 px-4 font-medium">Status</th>
+                <th className="py-2.5 px-4 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {filteredFollowups.map(f => (
-                <tr key={f.id} className="hover:bg-[var(--color-bg)] transition-colors">
-                  <td className="p-4">
-                    <div className="font-medium text-[var(--color-text)] flex items-center">
-                      <User className="w-4 h-4 mr-2 text-[var(--color-text-muted)]" />
-                      {f.lead?.name || 'Contact'}
-                    </div>
-                    <div className="text-sm text-[var(--color-text-muted)] ml-6">{f.lead?.phone || '—'}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className="px-2.5 py-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded text-xs text-[var(--color-text)]">
-                      {f.followup_type ? f.followup_type.replace(/_/g, ' ') : 'General Follow-up'}
-                    </span>
-                  </td>
-                  <td className="p-4 text-[var(--color-text)]">
-                    <div className="flex items-center text-sm">
-                      <Calendar className="w-4 h-4 mr-1 text-[var(--color-text-muted)]" />
-                      {f.scheduled_at ? format(new Date(f.scheduled_at), 'MMM d, yyyy') : '—'}
-                    </div>
-                    <div className="flex items-center text-sm text-[var(--color-text-muted)] mt-1">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {f.scheduled_at ? format(new Date(f.scheduled_at), 'h:mm a') : '—'}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(f.status)}`}>
-                      {f.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    {f.status === 'pending' && (
-                      <button
-                        onClick={() => handleCancel(f.id)}
-                        className="px-3 py-1.5 text-sm border border-[var(--color-border)] text-red-600 rounded-lg hover:bg-red-50"
-                      >
-                        Cancel
-                      </button>
-                    )}
+              {loading ? (
+                [1, 2, 3, 4].map(i => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-28"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-32"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-24"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-16"></div></td>
+                    <td className="py-3 px-4"><div className="h-4 bg-[var(--color-surface-elevated)] rounded w-14 ml-auto"></div></td>
+                  </tr>
+                ))
+              ) : filteredFollowups.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-[12px] text-[var(--color-text-muted)]">
+                    No follow-ups scheduled under this filter.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredFollowups.map(f => {
+                  const date = f.scheduled_at ? new Date(f.scheduled_at) : null;
+                  const isOverdue = date && isPast(date) && f.status === 'pending';
+
+                  return (
+                    <tr key={f.id} className="hover:bg-[var(--color-surface-elevated)]/40 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-[var(--color-text)]">
+                          {f.lead?.name || 'Prospect'}
+                        </div>
+                        <div className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                          {f.lead?.phone}
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-4 text-[12px] text-[var(--color-text)] capitalize">
+                        {f.followup_type?.replace(/_/g, ' ') || 'Site Visit Followup'}
+                      </td>
+
+                      <td className="py-3 px-4">
+                        <div className={`tabular-nums ${isOverdue ? 'text-[var(--color-status-hot)] font-medium' : 'text-[var(--color-text)]'}`}>
+                          {date ? format(date, 'MMM d, yyyy') : 'Pending'}
+                        </div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
+                          {date ? format(date, 'hh:mm a') : ''}
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-4">
+                        <Badge variant={isOverdue ? 'hot' : f.status === 'completed' || f.status === 'sent' ? 'success' : 'warm'}>
+                          {isOverdue ? 'Overdue' : f.status}
+                        </Badge>
+                      </td>
+
+                      <td className="py-3 px-4 text-right">
+                        {f.status === 'pending' && (
+                          <button
+                            onClick={() => handleCancel(f.id)}
+                            className="px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-status-hot)] rounded-[4px] text-[11px] font-medium cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
+
     </div>
   );
 }

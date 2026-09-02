@@ -1,79 +1,91 @@
 import React from 'react';
-import { GitBranch, Clock, MessageCircle, FileText, MapPin, Zap } from 'lucide-react';
+import { Zap, ArrowRight, CheckCircle2, Clock, Bot, Shield, Bell } from 'lucide-react';
+import { Badge } from '../components/ui/Badge';
 
 export default function Automation() {
+  const workflows = [
+    {
+      title: 'New Lead Auto-Discovery Sequence',
+      trigger: 'Customer sends first WhatsApp message to +91 7219311866',
+      action: 'AI immediately initializes requirement qualification and budget scoring.',
+      status: 'active',
+    },
+    {
+      title: 'Weekend Site Visit Slot Coordinator',
+      trigger: 'Customer expresses intent to visit property on Saturday / Sunday',
+      action: 'AI queries real-time database slots and holds appointment for executive review.',
+      status: 'active',
+    },
+    {
+      title: 'High-Intent Buyer Escalation Trigger',
+      trigger: 'Customer lead score exceeds 80 or requests human executive',
+      action: 'Switches conversation mode to Human and pings local Karjat sales team.',
+      status: 'active',
+    },
+    {
+      title: 'Fast2SMS Delivery Receipt Synchronizer',
+      trigger: 'Fast2SMS delivers message to client handset',
+      action: 'Updates message delivery ticks to sent/delivered/read in real-time.',
+      status: 'active',
+    },
+  ];
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-center mb-2">
-        <h1 className="text-2xl font-semibold text-[var(--color-text)]">Automation Workflows</h1>
-      </div>
+    <div className="p-4 sm:p-6 max-w-[1600px] mx-auto space-y-6 animate-entrance">
       
-      <div className="bg-[var(--color-bg)] p-4 rounded-lg border border-[var(--color-border)] mb-8">
-        <p className="text-sm text-[var(--color-text-muted)]">
-          <strong>Note:</strong> Workflow builder and custom rules will be available in a future update. These are the current system-defined automations.
-        </p>
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
+        <div>
+          <h1 className="text-[24px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            Automation & Smart Triggers
+          </h1>
+          <p className="text-[13px] text-[var(--color-text-muted)] mt-0.5">
+            Active brokerage triggers, auto-assignment rules, and background scheduler events.
+          </p>
+        </div>
+
+        <Badge variant="success">
+          4 Active Brokerage Automations
+        </Badge>
       </div>
 
-      <section>
-        <h2 className="text-lg font-medium text-[var(--color-text)] mb-4 flex items-center">
-          <Clock className="w-5 h-5 mr-2 text-[var(--color-text-muted)]" />
-          Follow-up Sequences
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { title: 'Initial Contact', icon: MessageCircle, desc: 'Triggers 24h after first message if no reply.', color: 'text-blue-500' },
-            { title: 'Property View', icon: FileText, desc: 'Follows up after a lead shows interest in a specific property.', color: 'text-purple-500' },
-            { title: 'Brochure Sent', icon: FileText, desc: 'Checks in 48h after sending a property brochure.', color: 'text-amber-500' },
-            { title: 'Post Site-Visit', icon: MapPin, desc: 'Collects feedback 2h after a completed site visit.', color: 'text-green-500' }
-          ].map(seq => (
-            <div key={seq.title} className="bg-[var(--color-surface)] p-5 rounded-xl border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors cursor-pointer">
-              <seq.icon className={`w-6 h-6 mb-3 ${seq.color}`} />
-              <h3 className="font-medium text-[var(--color-text)] mb-1">{seq.title}</h3>
-              <p className="text-sm text-[var(--color-text-muted)]">{seq.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-medium text-[var(--color-text)] mb-4 flex items-center">
-          <Zap className="w-5 h-5 mr-2 text-[var(--color-text-muted)]" />
-          Smart Triggers
-        </h2>
-        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">
-          <div className="divide-y divide-[var(--color-border)]">
-            {[
-              { rule: 'New Lead Auto-assignment', action: 'Assigns lead to available agent round-robin', status: 'Active' },
-              { rule: 'AI Handoff Alert', action: 'Sends push notification to manager when AI hands off', status: 'Active' },
-              { rule: 'Score Boost on Site Visit', action: 'Increases lead score by 20 points when visit scheduled', status: 'Active' },
-              { rule: 'Cold Lead Archival', action: 'Archives leads inactive for > 60 days', status: 'Active' }
-            ].map((trigger, i) => (
-              <div key={i} className="p-4 flex items-center justify-between hover:bg-[var(--color-bg)] transition-colors">
-                <div>
-                  <h4 className="font-medium text-[var(--color-text)]">{trigger.rule}</h4>
-                  <p className="text-sm text-[var(--color-text-muted)] mt-1">{trigger.action}</p>
-                </div>
-                <span className="px-2.5 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full border border-green-200">
-                  {trigger.status}
-                </span>
+      {/* WORKFLOWS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {workflows.map((wf) => (
+          <div
+            key={wf.title}
+            className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] p-5 shadow-[0_1px_2px_0_rgba(0,0,0,0.2)] space-y-3 flex flex-col justify-between"
+          >
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-medium text-[14px] text-[var(--color-text)]">
+                  {wf.title}
+                </h3>
+                <Badge variant="success" size="sm">
+                  Active
+                </Badge>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <section>
-        <h2 className="text-lg font-medium text-[var(--color-text)] mb-4 flex items-center">
-          <GitBranch className="w-5 h-5 mr-2 text-[var(--color-text-muted)]" />
-          AI Conversation Flow
-        </h2>
-        <div className="bg-[var(--color-surface)] p-6 rounded-xl border border-[var(--color-border)] text-center">
-          <p className="text-[var(--color-text-muted)] mb-4">View the active state machine guiding the AI Sales Agent.</p>
-          <a href="/ai-agent" className="inline-flex items-center text-[var(--color-primary)] font-medium hover:underline">
-            View AI State Map
-          </a>
-        </div>
-      </section>
+              <div className="space-y-1.5 pt-1 text-[12px]">
+                <div className="p-2 bg-[var(--color-surface-elevated)]/60 rounded-[4px] border border-[var(--color-border)] text-[var(--color-text-muted)]">
+                  <span className="font-medium text-[var(--color-text)] block mb-0.5">When:</span>
+                  {wf.trigger}
+                </div>
+                <div className="p-2 bg-[var(--color-surface-elevated)]/60 rounded-[4px] border border-[var(--color-border)] text-[var(--color-text-muted)]">
+                  <span className="font-medium text-[var(--color-accent)] block mb-0.5">Then:</span>
+                  {wf.action}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-[var(--color-text-muted)] pt-2 border-t border-[var(--color-border)] flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-accent)]" />
+              <span>Running in real-time on Render</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }

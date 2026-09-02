@@ -14,23 +14,25 @@
   --color-status-cold: var(--color-status-cold);
   --color-accent: var(--color-accent);
   --color-accent-hover: var(--color-accent-hover);
+  --color-gold: var(--color-gold);
   --font-display: 'Fraunces', Georgia, serif;
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 @layer base {
-  /* Default: Dark Mode (Deep Charcoal-Navy Base) */
+  /* Million Dollar Real Estate CRM: Deep Obsidian & Western Ghats Pine */
   :root {
-    --color-bg: #0e1420;
-    --color-surface: #151e2e;
-    --color-surface-elevated: #1d283d;
-    --color-border: #233047;
-    --color-text: #f1f5f9;
-    --color-text-muted: #8b9bb4;
+    --color-bg: #0b0f17;
+    --color-surface: #121824;
+    --color-surface-elevated: #182030;
+    --color-border: #222d3e;
+    --color-text: #f8fafc;
+    --color-text-muted: #94a3b8;
     --color-primary: #0d766e;
-    --color-primary-hover: #0f8c82;
+    --color-primary-hover: #14b8a6;
     --color-accent: #0d766e;
-    --color-accent-hover: #0f8c82;
+    --color-accent-hover: #14b8a6;
+    --color-gold: #d4af37;
     --color-status-hot: #e06c75;
     --color-status-warm: #e5c07b;
     --color-status-cold: #64748b;
@@ -40,18 +42,19 @@
     --color-info: #60a5fa;
   }
 
-  /* Light Mode (Warm Architectural Limestone) */
+  /* Light Mode (Warm Architectural Limestone Paper) */
   .light {
-    --color-bg: #faf9f6;
+    --color-bg: #f8f7f4;
     --color-surface: #ffffff;
-    --color-surface-elevated: #f3f1ec;
-    --color-border: #e7e4dc;
-    --color-text: #141a24;
-    --color-text-muted: #636e80;
+    --color-surface-elevated: #f1eee7;
+    --color-border: #e3ded5;
+    --color-text: #111827;
+    --color-text-muted: #64748b;
     --color-primary: #0d766e;
-    --color-primary-hover: #0a5c56;
+    --color-primary-hover: #09534e;
     --color-accent: #0d766e;
-    --color-accent-hover: #0a5c56;
+    --color-accent-hover: #09534e;
+    --color-gold: #b8860b;
     --color-status-hot: #cf4f58;
     --color-status-warm: #b8860b;
     --color-status-cold: #64748b;
@@ -70,23 +73,23 @@
     background-color: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-sans);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Structural hairline depth */
+  /* Structural hairline card depth */
   .crm-card {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
   }
 
   /* Minimal scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -100,16 +103,15 @@
   }
 }
 
-/* Tabular numbers for financial and square footage data */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Subtle single count-up animation */
+/* Subtle entrance animation */
 @keyframes countUpFade {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
