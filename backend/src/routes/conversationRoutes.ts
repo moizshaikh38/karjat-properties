@@ -12,6 +12,11 @@ const router = Router();
 router.use(requireAuth);
 router.use(requireRole('admin', 'manager', 'agent'));
 
+// Master System Mode Endpoints
+router.get('/master-mode', modeController.getMasterMode);
+router.post('/master-mode', modeController.setMasterMode);
+
+// Conversation Endpoints
 router.get('/', convController.listConversations);
 router.get('/:id/messages', validateRequest(conversationIdParamSchema), convController.getConversationMessages);
 router.post('/:id/messages', validateRequest(conversationIdParamSchema), convController.sendManualMessage);

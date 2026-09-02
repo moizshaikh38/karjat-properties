@@ -29,14 +29,19 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      const [analyticsRes, convRes] = await Promise.all([
+      const [analyticsRes, convRes, masterRes] = await Promise.all([
         api.get('/analytics/overview', { params: { range: dateRange } }),
         api.get('/conversations').catch(() => ({ data: { data: [] } })),
+        api.get('/conversations/master-mode').catch(() => ({ data: { data: { masterMode: 'ai' } } })),
       ]);
 
       setData(analyticsRes.data?.data || null);
       const rawConv = convRes.data?.data;
       setConversations(Array.isArray(rawConv) ? rawConv : rawConv?.conversations || []);
+
+      if (masterRes.data?.data?.masterMode) {
+        setMasterMode(masterRes.data.data.masterMode);
+      }
     } catch (err) {
       console.error(err);
       setError('Failed to load dashboard data.');
@@ -50,15 +55,28 @@ export default function Dashboard() {
   }, [dateRange]);
 
   // Master Mode Switch Handler
-  const handleMasterModeChange = (newMode: 'ai' | 'human' | 'paused') => {
+  const handleMasterModeChange = async (newMode: 'ai' | 'human' | 'paused') => {
     setMasterMode(newMode);
     localStorage.setItem('karjat_master_ai_mode', newMode);
-    if (newMode === 'ai') {
-      toast.success('Master Mode: 🤖 Autonomous AI Sales Agent Active for all incoming chats!');
-    } else if (newMode === 'human') {
-      toast('Master Mode: 👤 Human Takeover active. New chats assigned to agents.', { icon: 'ℹ️' });
-    } else {
-      toast('Master Mode: ⏸️ AI Automation Paused.', { icon: '⏸️' });
+
+    try {
+      if (newMode === 'human') {
+        // Switch ALL active chats to human mode in backend and UI
+        await api.post('/conversations/master-mode', { mode: 'human', applyToExisting: true });
+        setConversations(prev => prev.map(c => ({ ...c, mode: 'human' })));
+        toast.success('Master Mode: 👤 Human Mode Active! All current and new chats assigned to human agents.');
+      } else if (newMode === 'ai') {
+        // Switch master mode to AI for new chats, keep existing chats in their current state
+        await api.post('/conversations/master-mode', { mode: 'ai', applyToExisting: false });
+        toast.success('Master Mode: 🤖 AI Mode Active! New chats will be handled by AI. Existing chat states preserved.');
+      } else {
+        await api.post('/conversations/master-mode', { mode: 'paused', applyToExisting: true });
+        setConversations(prev => prev.map(c => ({ ...c, mode: 'paused' })));
+        toast('Master Mode: ⏸️ AI Automation Paused.', { icon: '⏸️' });
+      }
+    } catch (err) {
+      console.error('Failed to sync master mode to backend', err);
+      toast.error('Failed to update system master mode');
     }
   };
 

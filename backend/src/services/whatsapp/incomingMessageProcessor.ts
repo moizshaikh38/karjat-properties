@@ -103,6 +103,9 @@ const findOrCreateConversation = async (leadId: string, phone: string) => {
 
   if (existing) return existing;
 
+  const { getMasterMode } = await import('../conversationModeService');
+  const initialMode = getMasterMode();
+
   // Create new if none active
   const { data: newConv, error } = await client
     .from('whatsapp_conversations')
@@ -110,8 +113,9 @@ const findOrCreateConversation = async (leadId: string, phone: string) => {
       lead_id: leadId,
       whatsapp_phone: phone,
       status: 'active',
-      mode: 'ai', // Default to AI
-      ai_enabled: true
+      mode: initialMode,
+      ai_enabled: initialMode === 'ai',
+      human_takeover_at: initialMode === 'human' ? new Date().toISOString() : undefined,
     })
     .select()
     .single();

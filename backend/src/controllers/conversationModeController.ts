@@ -4,6 +4,36 @@ import { ApiSuccessResponse } from '../types/api';
 
 const param = (req: Request, name: string): string => req.params[name] as string;
 
+export const getMasterMode = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const masterMode = modeService.getMasterMode();
+    const response: ApiSuccessResponse = {
+      success: true,
+      data: { masterMode },
+    };
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const setMasterMode = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const actorId = req.user!.userId;
+    const { mode, applyToExisting } = req.body;
+    
+    const result = await modeService.setMasterMode(mode, applyToExisting ?? (mode === 'human'), actorId);
+    
+    const response: ApiSuccessResponse = {
+      success: true,
+      data: result,
+    };
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMode = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await modeService.getConversationMode(param(req, 'id'));
