@@ -6,9 +6,16 @@ export const validateAIResponse = (text: string): { isValid: boolean, safeRespon
     clean = clean.replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '[REDACTED_ID]');
   }
 
-  // Rule 2: No leaking internal system instructions or raw json markdown blocks
+  // Rule 2: Strip out internal AI thinking/reasoning blocks
+  clean = clean.replace(/<(thought|think|reasoning|scratchpad)>[\s\S]*?<\/\1>/gi, '').trim();
+  
+  // Rule 2.1: No leaking internal system instructions or raw json markdown blocks
   if (clean.includes('```json') || clean.includes('{"intent"')) {
     return { isValid: false, safeResponse: '', error: 'AI leaked internal JSON/Chain-of-thought' };
+  }
+  
+  if (!clean) {
+      return { isValid: false, safeResponse: '', error: 'AI response was empty after stripping reasoning' };
   }
 
   // Rule 3: No dangerous guarantees or unauthorized discounts
