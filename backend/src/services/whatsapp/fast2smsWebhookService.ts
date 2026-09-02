@@ -72,6 +72,34 @@ export class Fast2SMSWebhookService {
         return { success: false };
       }
 
+      // ═══ EARLY FILTER: Skip outgoing message echoes and status updates ═══
+      // Fast2SMS sends webhooks for status updates (sent/delivered/read) that
+      // echo the bot's outgoing message text+phone. These MUST be filtered
+      // before any content-based classification to prevent duplicate AI replies.
+      const topWebhookType = String(payload.webhook_type || '').toLowerCase();
+      const topRoute = String(payload.route || '').toLowerCase();
+      const topStatus = String(payload.status || '').toLowerCase();
+
+      if (topWebhookType === 'status_update' || topWebhookType === 'message_status' || topRoute === 'session') {
+        logger.info({ webhookType: topWebhookType, route: topRoute, status: topStatus }, 'Fast2SMS webhook: status/session event — skipping AI trigger');
+        // Still process for delivery tracking (update message status in DB)
+        const normalized = this.normalizePayload(payload);
+        if (normalized && normalized.type === 'status_update') {
+          await this.handleStatusUpdate(normalized);
+        }
+        return { success: true };
+      }
+
+      // If status field exists and is NOT 'received', it's not a customer message
+      if (topStatus && topStatus !== 'received' && !payload.entry) {
+        logger.info({ status: topStatus, webhookType: topWebhookType }, 'Fast2SMS webhook: non-received status — skipping');
+        const normalized = this.normalizePayload(payload);
+        if (normalized && normalized.type === 'status_update') {
+          await this.handleStatusUpdate(normalized);
+        }
+        return { success: true };
+      }
+
       // 1. If it's a Meta-wrapped batch structure (entry[]), handle array
       if (payload.entry && Array.isArray(payload.entry)) {
         return this.handleMetaWrappedPayload(payload);
@@ -84,7 +112,12 @@ export class Fast2SMSWebhookService {
           const combined = { ...payload, ...msg };
           const normalized = this.normalizePayload(combined);
           if (normalized) {
-            await this.handleIncomingMessage(normalized);
+            // Route by event type — don't assume all are incoming messages
+            if (normalized.type === 'incoming_message') {
+              await this.handleIncomingMessage(normalized);
+            } else if (normalized.type === 'status_update') {
+              await this.handleStatusUpdate(normalized);
+            }
           }
         }
         return { success: true };
@@ -185,12 +218,55 @@ export class Fast2SMSWebhookService {
 
     const webhookType = String(data.webhook_type || data.event || '').toLowerCase();
     const statusField = String(data.status || data.delivery_status || '').toLowerCase();
+    const route = String(data.route || '').toLowerCase();
 
-    // Determine if this is a genuine incoming message (has text/media from a phone number)
+    // ═══ CRITICAL FIX: Check status events BEFORE incoming content ═══
+    // Fast2SMS sends status webhooks (sent/delivered/read) that echo back
+    // the bot's outgoing message text and phone number. If we check for
+    // text content first, these get misclassified as new incoming customer
+    // messages, causing the AI to re-trigger and produce duplicate replies.
+    const isStatusEvent =
+      webhookType === 'status_update' ||
+      webhookType === 'message_status' ||
+      webhookType === 'on_sent' ||
+      webhookType === 'on_delivered' ||
+      webhookType === 'on_read' ||
+      webhookType === 'on_failed' ||
+      route === 'session' ||
+      ['sent', 'delivered', 'read', 'failed'].includes(statusField);
+
+    if (isStatusEvent) {
+      let resolvedStatus: 'sent' | 'delivered' | 'read' | 'failed' = 'sent';
+      if (webhookType === 'on_delivered' || statusField === 'delivered') resolvedStatus = 'delivered';
+      else if (webhookType === 'on_read' || statusField === 'read') resolvedStatus = 'read';
+      else if (webhookType === 'on_failed' || statusField === 'failed') resolvedStatus = 'failed';
+
+      logger.debug({ webhookType, route, statusField, messageId }, 'Fast2SMS: classified as status_update, not incoming_message');
+
+      return {
+        provider: 'fast2sms',
+        type: 'status_update',
+        phoneNumberId: data.phone_number_id,
+        providerMessageId: messageId,
+        status: resolvedStatus,
+        timestamp: isoTimestamp,
+        errors: data.errors || data.error,
+        raw: data,
+      };
+    }
+
+    // If status field exists but is NOT 'received', this is not a customer message
+    if (statusField && statusField !== 'received') {
+      logger.debug({ statusField, messageId }, 'Fast2SMS: non-received status — returning null');
+      return null;
+    }
+
+    // NOW safe to check for incoming content (all status events already filtered above)
     const hasIncomingContent = (text !== null && String(text).trim().length > 0) || Boolean(mediaUrl);
 
     if (hasIncomingContent && customerPhone) {
       const messageType = String(data.message_type || data.type || (mediaUrl ? 'image' : 'text')).toLowerCase();
+      logger.debug({ customerPhone, messageType, messageId }, 'Fast2SMS: classified as genuine incoming_message');
       return {
         provider: 'fast2sms',
         type: 'incoming_message',
@@ -202,33 +278,6 @@ export class Fast2SMSWebhookService {
         providerMessageId: messageId,
         contextMessageId: data.context_message_id || data.reply_to_message_id || null,
         timestamp: isoTimestamp,
-        raw: data,
-      };
-    }
-
-    // Check if this is a delivery status event
-    const isStatusEvent =
-      webhookType === 'status_update' ||
-      webhookType === 'on_sent' ||
-      webhookType === 'on_delivered' ||
-      webhookType === 'on_read' ||
-      webhookType === 'on_failed' ||
-      ['sent', 'delivered', 'read', 'failed'].includes(statusField);
-
-    if (isStatusEvent) {
-      let resolvedStatus: 'sent' | 'delivered' | 'read' | 'failed' = 'sent';
-      if (webhookType === 'on_delivered' || statusField === 'delivered') resolvedStatus = 'delivered';
-      else if (webhookType === 'on_read' || statusField === 'read') resolvedStatus = 'read';
-      else if (webhookType === 'on_failed' || statusField === 'failed') resolvedStatus = 'failed';
-
-      return {
-        provider: 'fast2sms',
-        type: 'status_update',
-        phoneNumberId: data.phone_number_id,
-        providerMessageId: messageId,
-        status: resolvedStatus,
-        timestamp: isoTimestamp,
-        errors: data.errors || data.error,
         raw: data,
       };
     }

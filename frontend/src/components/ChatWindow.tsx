@@ -117,7 +117,7 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
     
     try {
       setSending(true);
-      await api.post(`/conversations/${conversationId}/messages`, { text: inputText.trim() });
+      await api.post(`/conversations/${conversationId}/messages`, { type: 'text', text: inputText.trim() });
       setInputText('');
       fetchData();
     } catch (err) {
