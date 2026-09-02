@@ -47,7 +47,7 @@ export const processIncomingMessage = async (msg: ProcessedWebhookMessage) => {
     text_content: msg.text_content,
     media_url: msg.media_url,
     metadata: msg.metadata,
-    status: 'received',
+    status: 'delivered',
     sent_at: msg.timestamp,
   });
 

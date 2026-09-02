@@ -11,7 +11,7 @@ export interface WhatsAppMessageRow {
   recipient_phone: string | null;
   text_content: string | null;
   media_url: string | null;
-  metadata: any | null;
+  metadata?: any | null;
   status: 'received' | 'queued' | 'sent' | 'delivered' | 'read' | 'failed' | null;
   sent_at: string | null;
   created_at: string;
@@ -19,9 +19,26 @@ export interface WhatsAppMessageRow {
 
 export const createMessage = async (data: Partial<WhatsAppMessageRow>): Promise<WhatsAppMessageRow> => {
   const client = db.getClient();
+
+  let resolvedStatus = data.status || 'sent';
+  if (resolvedStatus === 'received') resolvedStatus = 'delivered';
+
+  const insertPayload: any = {
+    conversation_id: data.conversation_id,
+    whatsapp_message_id: data.whatsapp_message_id,
+    direction: data.direction,
+    message_type: data.message_type || 'text',
+    sender_phone: data.sender_phone,
+    recipient_phone: data.recipient_phone,
+    text_content: data.text_content,
+    media_url: data.media_url,
+    status: resolvedStatus,
+    sent_at: data.sent_at || new Date().toISOString(),
+  };
+
   const { data: inserted, error } = await client
     .from('whatsapp_messages')
-    .insert(data)
+    .insert(insertPayload)
     .select()
     .single();
 
@@ -51,7 +68,6 @@ export const updateMessageStatus = async (whatsappMessageId: string, status: str
   const client = db.getClient();
   
   const updates: any = { status };
-  if (metadata) updates.metadata = metadata;
 
   const { error } = await client
     .from('whatsapp_messages')
