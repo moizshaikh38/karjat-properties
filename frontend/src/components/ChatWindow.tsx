@@ -32,20 +32,27 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
   const fetchData = async () => {
     try {
       const [convRes, msgsRes] = await Promise.all([
-        api.get(`/conversations`),
-        api.get(`/conversations/${conversationId}/messages`)
+        api.get(`/conversations`).catch(() => ({ data: { data: [] } })),
+        api.get(`/conversations/${conversationId}/messages`).catch(() => ({ data: { data: [] } }))
       ]);
       const convList = convRes.data?.data || [];
-      const conv = convList.find((c: any) => c.id === conversationId) || DEMO_CONVERSATIONS.find(c => c.id === conversationId);
+      let conv = convList.find((c: any) => c.id === conversationId);
+      if (!conv) {
+        conv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
+      }
       if (conv) setConversation(conv);
 
       const rawMsgs = msgsRes.data?.data || [];
+      const isDemo = String(conversationId).startsWith('conv-');
       const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
-      const newMsgs = rawMsgs.length > 0 ? rawMsgs : (demoConv?.messages || []);
+      
+      const newMsgs = (rawMsgs.length > 0 || !isDemo)
+        ? rawMsgs
+        : (demoConv?.messages || []);
 
       setMessages((prev) => {
         if (prev.length === newMsgs.length) {
-          const isIdentical = prev.every((m, idx) => m.id === newMsgs[idx]?.id && m.status === newMsgs[idx]?.status);
+          const isIdentical = prev.every((m, idx) => m.id === newMsgs[idx]?.id && m.status === newMsgs[idx]?.status && m.text_content === newMsgs[idx]?.text_content);
           if (isIdentical) return prev;
         }
         return newMsgs as any;
@@ -66,7 +73,7 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
     isInitialLoadRef.current = true;
     prevMsgCountRef.current = 0;
     fetchData();
-    const interval = setInterval(fetchData, 4000);
+    const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, [conversationId]);
 

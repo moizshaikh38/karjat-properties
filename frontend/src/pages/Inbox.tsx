@@ -12,7 +12,7 @@ import { DEMO_CONVERSATIONS } from '../data/demoData';
 export default function Inbox() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [conversations, setConversations] = useState<Conversation[]>(DEMO_CONVERSATIONS as any);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filter, setFilter] = useState<'all' | 'ai' | 'human' | 'paused'>('all');
   const [search, setSearch] = useState('');
   
@@ -20,22 +20,26 @@ export default function Inbox() {
     try {
       const res = await api.get('/conversations').catch(() => ({ data: { data: [] } }));
       const raw = res.data?.data;
-      const dbList = Array.isArray(raw) ? raw : raw?.conversations || [];
+      const dbList: any[] = Array.isArray(raw) ? raw : raw?.conversations || [];
       
-      // Filter out raw test/junk records and keep authentic conversations
-      const validDbList = dbList.filter((c: any) => 
-        c.whatsapp_phone && 
-        c.lead?.name && 
-        !c.whatsapp_phone.includes('1234567890') &&
-        !c.id.includes('raw_test')
-      );
+      // Keep all real database conversations
+      const realDbList = dbList.map((c: any) => ({
+        ...c,
+        lead: c.lead || {
+          name: c.whatsapp_phone,
+          phone: c.whatsapp_phone,
+          classification: 'WARM',
+          temperature: 'WARM',
+          status: 'discovery'
+        }
+      }));
 
-      // Merge DEMO_CONVERSATIONS with any valid real user incoming conversations
-      const mergedMap = new Map();
-      DEMO_CONVERSATIONS.forEach(c => mergedMap.set(c.id, c));
-      validDbList.forEach((c: any) => mergedMap.set(c.id, c));
+      // Combine real DB conversations (at the top) + DEMO_CONVERSATIONS
+      const realIds = new Set(realDbList.map((c: any) => c.id));
+      const filteredDemo = DEMO_CONVERSATIONS.filter(d => !realIds.has(d.id));
       
-      setConversations(Array.from(mergedMap.values()));
+      const allConversations = [...realDbList, ...filteredDemo];
+      setConversations(allConversations as any);
     } catch (err) {
       setConversations(DEMO_CONVERSATIONS as any);
     }
@@ -43,25 +47,30 @@ export default function Inbox() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 8000);
+    const interval = setInterval(fetchConversations, 3000);
     return () => clearInterval(interval);
   }, []);
 
   const filteredConversations = conversations
     .filter(c => filter === 'all' || c.mode === filter)
     .filter(c => 
-      c.whatsapp_phone.includes(search) || 
+      c.whatsapp_phone?.includes(search) || 
       c.lead?.name?.toLowerCase().includes(search.toLowerCase())
     )
-    .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
+    .sort((a, b) => {
+      const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+      const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+      return timeB - timeA;
+    });
 
   const isMobile = window.innerWidth < 768;
   const isConversationSelected = location.pathname.includes('/inbox/');
-  const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? 'conv-1');
+  const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? '');
 
-  // If no conversation in URL, navigate to the first conversation
+  // If no conversation in URL and we have conversations, navigate to first
   useEffect(() => {
-    if (!location.pathname.split('/inbox/')[1] && filteredConversations[0]?.id) {
+    const selectedId = location.pathname.split('/inbox/')[1];
+    if (!selectedId && filteredConversations[0]?.id) {
       navigate(`/inbox/${filteredConversations[0].id}`, { replace: true });
     }
   }, [location.pathname, filteredConversations]);
@@ -77,10 +86,10 @@ export default function Inbox() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <MessageSquare className="w-4 h-4 text-[var(--color-accent)]" />
-              <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Threads</h2>
+              <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Chats</h2>
             </div>
             <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
-              {filteredConversations.length} Active
+              {filteredConversations.length} Threads
             </span>
           </div>
 
@@ -88,7 +97,7 @@ export default function Inbox() {
             <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-[var(--color-text-muted)]" />
             <input 
               type="text"
-              placeholder="Search phone or buyer name..."
+              placeholder="Search phone or buyer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] rounded-[6px] pl-8 pr-2.5 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] focus:border-[var(--color-accent)]"
@@ -117,7 +126,7 @@ export default function Inbox() {
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--color-border)] hide-scrollbar">
           {filteredConversations.length === 0 ? (
             <div className="p-6 text-center text-[12px] text-[var(--color-text-muted)]">
-              No matching conversations found.
+              No matching WhatsApp chats found.
             </div>
           ) : (
             filteredConversations.map(conv => {
@@ -125,7 +134,9 @@ export default function Inbox() {
               const isSelected = currentConvId === conv.id;
               const isHot = lead.classification === 'HOT' || lead.temperature === 'HOT';
               const isWarm = lead.classification === 'WARM' || lead.temperature === 'WARM';
-              const lastMsg = (conv as any).messages?.[(conv as any).messages.length - 1];
+              
+              const lastMsgObj = (conv as any).lastMessage || (conv as any).messages?.[(conv as any).messages?.length - 1];
+              const lastText = lastMsgObj?.text_content || 'Active WhatsApp conversation';
 
               return (
                 <div 
@@ -149,7 +160,7 @@ export default function Inbox() {
                   </div>
 
                   <p className="text-[11.5px] text-[var(--color-text-muted)] line-clamp-1 mb-1.5 italic">
-                    "{lastMsg?.text_content || 'Inquiring about Karjat properties'}"
+                    "{lastText}"
                   </p>
 
                   <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] font-mono">
@@ -161,7 +172,7 @@ export default function Inbox() {
 
                   <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[var(--color-border)]/40 text-[10.5px] text-[var(--color-text-muted)]">
                     <span className="truncate max-w-[170px] text-[var(--color-accent)] font-medium">
-                      {lead.preferred_bhk ? `${lead.preferred_bhk} · ${lead.property_type || 'Villa'}` : 'Karjat Inquirer'}
+                      {lead.preferred_bhk ? `${lead.preferred_bhk} · ${lead.property_type || 'Villa'}` : (lead.status ? `Stage: ${lead.status}` : 'Karjat Inquirer')}
                     </span>
                     <span className="font-medium">
                       {conv.mode === 'human' ? '👤 Human' : '🤖 AI Active'}
