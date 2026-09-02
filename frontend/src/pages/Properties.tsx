@@ -24,7 +24,8 @@ import {
   FileCheck,
   Droplets,
   Zap,
-  Sparkles
+  Sparkles,
+  FolderOpen
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -72,6 +73,7 @@ const PRESET_PHOTOS = [
 
 export default function Properties() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'grid' | 'table'>('grid');
@@ -98,9 +100,13 @@ export default function Properties() {
     city: 'Karjat',
     price: '',
     
-    // Area & Units (Acre / Guntha / Sq.Ft.)
+    // Acre & Guntha Dual Tracking
+    acres: '0',
+    gunthas: '0',
     area_value: '2400',
     area_unit: 'sqft' as 'sqft' | 'guntha' | 'acre',
+    total_calculated_sqft: 2400,
+
     builtup_area_sqft: '2400',
     carpet_area_sqft: '1800',
     
@@ -142,25 +148,17 @@ export default function Properties() {
     fetchProperties();
   }, []);
 
-  // Compute Area in SqFt from Unit
-  const calculateSqFt = (val: number, unit: 'sqft' | 'guntha' | 'acre'): number => {
-    if (unit === 'guntha') return Math.round(val * 1089);
-    if (unit === 'acre') return Math.round(val * 43560);
-    return val;
-  };
-
   // Format Area for Display (e.g., "2.5 Acres", "10 Guntha", "2,400 Sq.Ft.")
   const formatAreaDisplay = (prop: any) => {
     const sqft = prop.size_sqft || prop.plot_area_sqft || prop.carpet_area_sqft || 0;
     if (!sqft) return '—';
 
-    // If description or title contains Acre / Guntha or area >= 43560
     if (sqft >= 43560) {
       const acres = (sqft / 43560).toFixed(2).replace(/\.00$/, '');
       const gunthas = Math.round(sqft / 1089);
       return `${acres} Acres (${gunthas} Guntha)`;
     }
-    if (sqft >= 1089 && prop.property_type === 'plot') {
+    if (sqft >= 1089 && (prop.property_type === 'plot' || prop.property_type === 'farmhouse' || sqft < 43560)) {
       const gunthas = (sqft / 1089).toFixed(1).replace(/\.0$/, '');
       return `${gunthas} Guntha (${sqft.toLocaleString()} sqft)`;
     }
@@ -178,6 +176,86 @@ export default function Properties() {
     return `₹${price.toLocaleString()}`;
   };
 
+  // Synchronize Acre + Guntha with Total SqFt
+  const updateFromAcreGuntha = (acres: string, gunthas: string) => {
+    const numAcres = parseFloat(acres) || 0;
+    const numGunthas = parseFloat(gunthas) || 0;
+    const totalSqFt = Math.round(numAcres * 43560 + numGunthas * 1089);
+
+    setFormData((prev) => ({
+      ...prev,
+      acres,
+      gunthas,
+      total_calculated_sqft: totalSqFt,
+      area_value: numAcres > 0 ? acres : numGunthas > 0 ? gunthas : String(totalSqFt),
+      area_unit: numAcres > 0 ? 'acre' : numGunthas > 0 ? 'guntha' : 'sqft',
+      builtup_area_sqft: prev.property_type === 'plot' ? '0' : prev.builtup_area_sqft,
+    }));
+  };
+
+  // Synchronize Direct Value & Unit with Acre / Guntha
+  const updateFromUnitValue = (val: string, unit: 'sqft' | 'guntha' | 'acre') => {
+    const num = parseFloat(val) || 0;
+    let totalSqFt = num;
+    let calcAcres = '0';
+    let calcGunthas = '0';
+
+    if (unit === 'guntha') {
+      totalSqFt = Math.round(num * 1089);
+      calcGunthas = val;
+      calcAcres = (num / 40).toFixed(2).replace(/\.00$/, '');
+    } else if (unit === 'acre') {
+      totalSqFt = Math.round(num * 43560);
+      calcAcres = val;
+      calcGunthas = (num * 40).toFixed(1).replace(/\.0$/, '');
+    } else {
+      totalSqFt = num;
+      calcGunthas = (num / 1089).toFixed(1).replace(/\.0$/, '');
+      calcAcres = (num / 43560).toFixed(2).replace(/\.00$/, '');
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      area_value: val,
+      area_unit: unit,
+      acres: calcAcres,
+      gunthas: calcGunthas,
+      total_calculated_sqft: totalSqFt,
+    }));
+  };
+
+  // Upload Local Photo Files From Device
+  const handleSystemFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    let addedCount = 0;
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (dataUrl) {
+          setFormData((prev) => ({
+            ...prev,
+            images: [...prev.images, dataUrl],
+          }));
+          addedCount++;
+          if (addedCount === files.length) {
+            toast.success(`Added ${addedCount} photo(s) from your device`);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (e.target) e.target.value = '';
+  };
+
   const handleOpenAdd = () => {
     setFormData({
       id: '',
@@ -189,8 +267,11 @@ export default function Properties() {
       location: 'Kashele, Karjat',
       city: 'Karjat',
       price: '',
+      acres: '0',
+      gunthas: '2.2',
       area_value: '2400',
       area_unit: 'sqft',
+      total_calculated_sqft: 2400,
       builtup_area_sqft: '2400',
       carpet_area_sqft: '1800',
       bhk: '3',
@@ -213,15 +294,18 @@ export default function Properties() {
     setPropertyToEdit(prop);
     
     const rawSqFt = prop.size_sqft || prop.plot_area_sqft || prop.carpet_area_sqft || 2400;
+    const calcAcres = (rawSqFt / 43560).toFixed(2).replace(/\.00$/, '');
+    const calcGunthas = (rawSqFt / 1089).toFixed(1).replace(/\.0$/, '');
+
     let initialUnit: 'sqft' | 'guntha' | 'acre' = 'sqft';
     let initialVal = String(rawSqFt);
 
     if (rawSqFt >= 43560) {
       initialUnit = 'acre';
-      initialVal = (rawSqFt / 43560).toFixed(2);
+      initialVal = calcAcres;
     } else if (rawSqFt >= 1089 && prop.property_type === 'plot') {
       initialUnit = 'guntha';
-      initialVal = (rawSqFt / 1089).toFixed(1);
+      initialVal = calcGunthas;
     }
 
     setFormData({
@@ -234,8 +318,11 @@ export default function Properties() {
       location: prop.location || 'Kashele, Karjat',
       city: 'Karjat',
       price: String(prop.price || ''),
+      acres: calcAcres,
+      gunthas: calcGunthas,
       area_value: initialVal,
       area_unit: initialUnit,
+      total_calculated_sqft: rawSqFt,
       builtup_area_sqft: String(prop.builtup_area_sqft || prop.size_sqft || ''),
       carpet_area_sqft: String(prop.carpet_area_sqft || ''),
       bhk: String(prop.bhk ?? '3'),
@@ -261,12 +348,12 @@ export default function Properties() {
 
     try {
       setIsSubmitting(true);
-      const totalSqFt = calculateSqFt(Number(formData.area_value) || 0, formData.area_unit);
+      const totalSqFt = formData.total_calculated_sqft || 2400;
 
       const payload: any = {
         title: formData.title,
         name: formData.title,
-        description: formData.description || `${formData.bhk} BHK ${formData.property_type} in ${formData.location}. ${formData.land_zone}, ${formData.water_source}, ${formData.facing_view}.`,
+        description: formData.description || `${formData.property_type === 'plot' ? `${formData.gunthas} Guntha Sanctioned NA Plot` : `${formData.bhk} BHK ${formData.property_type}`} in ${formData.location}. ${formData.land_zone}, ${formData.water_source}, ${formData.facing_view}.`,
         property_type: formData.property_type,
         listing_type: formData.listing_type,
         status: formData.status.toLowerCase(),
@@ -277,8 +364,8 @@ export default function Properties() {
         bathrooms: formData.property_type === 'plot' ? 0 : Number(formData.bathrooms) || 0,
         size_sqft: totalSqFt,
         plot_area_sqft: totalSqFt,
-        builtup_area_sqft: Number(formData.builtup_area_sqft) || totalSqFt,
-        carpet_area_sqft: Number(formData.carpet_area_sqft) || Math.round(totalSqFt * 0.75),
+        builtup_area_sqft: Number(formData.builtup_area_sqft) || (formData.property_type === 'plot' ? 0 : totalSqFt),
+        carpet_area_sqft: Number(formData.carpet_area_sqft) || (formData.property_type === 'plot' ? 0 : Math.round(totalSqFt * 0.75)),
         furnished_status: formData.furnishing,
         amenities: formData.amenities,
         images: formData.images,
@@ -718,7 +805,15 @@ export default function Properties() {
                 <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Property Type *</label>
                 <select
                   value={formData.property_type}
-                  onChange={(e) => setFormData({ ...formData, property_type: e.target.value })}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      property_type: newType,
+                      bhk: newType === 'plot' ? '0' : prev.bhk || '3',
+                      builtup_area_sqft: newType === 'plot' ? '0' : prev.builtup_area_sqft,
+                    }));
+                  }}
                   className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] cursor-pointer"
                 >
                   <option value="villa">Luxury Villa / Bungalow</option>
@@ -758,33 +853,93 @@ export default function Properties() {
             </div>
           </div>
 
-          {/* SECTION 2: AREA MEASUREMENTS (ACRE / GUNTHA / SQ.FT.) */}
+          {/* SECTION 2: PROMINENT ACRE & GUNTHA LAND MEASUREMENTS */}
           <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-3 bg-[var(--color-surface)]">
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium text-[var(--color-text)]">2. Land & Built-up Area Measurements</span>
-              <span className="text-[11px] text-[var(--color-accent)] font-mono">1 Acre = 40 Guntha = 43,560 sqft</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-medium text-[var(--color-text)]">
+                  2. Land Measurement (Acre & Guntha)
+                </span>
+                {formData.property_type === 'plot' && (
+                  <span className="px-1.5 py-0.5 bg-[var(--color-accent)]/15 text-[var(--color-accent)] text-[10px] font-medium rounded border border-[var(--color-accent)]/30">
+                    Plot / Land Mode
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-[var(--color-accent)] font-mono hidden sm:inline">
+                1 Acre = 40 Guntha = 43,560 sqft | 1 Guntha = 1,089 sqft
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Value Input */}
-              <div className="sm:col-span-2">
+            {/* Direct Acre & Guntha Dual Input Row for Plots / Land */}
+            <div className="p-3 bg-[var(--color-surface-elevated)]/70 rounded-[6px] border border-[var(--color-border)] space-y-3">
+              <span className="text-[11px] font-medium text-[var(--color-text-muted)] block">
+                Specify Land Size in Acres & Gunthas:
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-[var(--color-text)] mb-1">
+                    Acres (एकर)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={formData.acres}
+                    onChange={(e) => updateFromAcreGuntha(e.target.value, formData.gunthas)}
+                    placeholder="e.g. 1.5"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] font-medium text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-[var(--color-text)] mb-1">
+                    Gunthas (गुंठा)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={formData.gunthas}
+                    onChange={(e) => updateFromAcreGuntha(formData.acres, e.target.value)}
+                    placeholder="e.g. 10"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] font-medium text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
+                    Calculated Total Land Area
+                  </label>
+                  <div className="h-9 px-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] flex items-center justify-between text-[12px] font-mono text-[var(--color-accent)] font-medium tabular-nums">
+                    <span>{formData.total_calculated_sqft.toLocaleString()} Sq.Ft.</span>
+                    <span className="text-[10px] text-[var(--color-text-muted)]">
+                      ({(formData.total_calculated_sqft / 1089).toFixed(1)} Guntha)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Direct Unit Converter Alternative */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
                 <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">
-                  Plot / Land Size *
+                  Or Direct Measurement Entry:
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     step="any"
-                    required
                     value={formData.area_value}
-                    onChange={(e) => setFormData({ ...formData, area_value: e.target.value })}
-                    placeholder="e.g. 2.5 or 10 or 2400"
+                    onChange={(e) => updateFromUnitValue(e.target.value, formData.area_unit)}
+                    placeholder="2400"
                     className="flex-1 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] font-mono"
                   />
-                  {/* Unit Selector: Sq.Ft, Guntha, Acre */}
                   <select
                     value={formData.area_unit}
-                    onChange={(e) => setFormData({ ...formData, area_unit: e.target.value as any })}
+                    onChange={(e) => updateFromUnitValue(formData.area_value, e.target.value as any)}
                     className="w-32 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] font-medium text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] cursor-pointer"
                   >
                     <option value="sqft">Sq.Ft.</option>
@@ -794,18 +949,38 @@ export default function Properties() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Calculated Sq.Ft.</label>
-                <div className="h-9 px-3 bg-[var(--color-surface-elevated)]/60 border border-[var(--color-border)] rounded-[6px] flex items-center text-[12px] font-mono text-[var(--color-text)] tabular-nums">
-                  {calculateSqFt(Number(formData.area_value) || 0, formData.area_unit).toLocaleString()} sqft
+              {formData.property_type !== 'plot' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Built-up (SqFt)</label>
+                    <input
+                      type="number"
+                      value={formData.builtup_area_sqft}
+                      onChange={(e) => setFormData({ ...formData, builtup_area_sqft: e.target.value })}
+                      className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Carpet (SqFt)</label>
+                    <input
+                      type="number"
+                      value={formData.carpet_area_sqft}
+                      onChange={(e) => setFormData({ ...formData, carpet_area_sqft: e.target.value })}
+                      className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)]"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center text-[12px] text-[var(--color-text-muted)] p-2 bg-[var(--color-surface-elevated)]/40 rounded-[6px] border border-[var(--color-border)]">
+                  <span>✓ 100% Clear Title NA Sanctioned Plot Layout with Demarcation Stones</span>
+                </div>
+              )}
             </div>
 
             {formData.property_type !== 'plot' && (
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-[var(--color-border)]/50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[var(--color-border)]/50">
                 <div>
-                  <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">BHK</label>
+                  <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">BHK Configuration</label>
                   <select
                     value={formData.bhk}
                     onChange={(e) => setFormData({ ...formData, bhk: e.target.value })}
@@ -828,31 +1003,11 @@ export default function Properties() {
                     className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)]"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Built-up (SqFt)</label>
-                  <input
-                    type="number"
-                    value={formData.builtup_area_sqft}
-                    onChange={(e) => setFormData({ ...formData, builtup_area_sqft: e.target.value })}
-                    className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Carpet (SqFt)</label>
-                  <input
-                    type="number"
-                    value={formData.carpet_area_sqft}
-                    onChange={(e) => setFormData({ ...formData, carpet_area_sqft: e.target.value })}
-                    className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)]"
-                  />
-                </div>
               </div>
             )}
           </div>
 
-          {/* SECTION 3: LEGAL, WATER, POWER & ROAD SPECS (KARJAT SPECIFIC) */}
+          {/* SECTION 3: LEGAL, WATER, POWER & ROAD SPECS */}
           <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-3 bg-[var(--color-surface)]">
             <span className="text-[12px] font-medium text-[var(--color-text)] block">3. Legal, Zone & Infrastructure Specs</span>
 
@@ -925,13 +1080,54 @@ export default function Properties() {
             </div>
           </div>
 
-          {/* SECTION 5: MEDIA & PHOTO SHOWCASE */}
+          {/* SECTION 5: SYSTEM PHOTO UPLOAD & PRESET MEDIA */}
           <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-3 bg-[var(--color-surface)]">
-            <span className="text-[12px] font-medium text-[var(--color-text)] block">5. Property Photos & Media</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-medium text-[var(--color-text)] block">
+                5. Property Photos & System File Upload
+              </span>
+              <span className="text-[11px] text-[var(--color-accent)]">
+                {formData.images.length} photo(s) attached
+              </span>
+            </div>
+
+            {/* UPLOAD FROM SYSTEM / COMPUTER BUTTON & DRAG-AND-DROP */}
+            <div className="p-4 bg-[var(--color-surface-elevated)]/60 border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors rounded-[6px] text-center space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleSystemFileUpload}
+                className="hidden"
+              />
+              <div className="flex justify-center">
+                <div className="w-10 h-10 rounded-full bg-[var(--color-accent)]/15 flex items-center justify-center text-[var(--color-accent)]">
+                  <Upload className="w-5 h-5" />
+                </div>
+              </div>
+              <div>
+                <p className="text-[13px] font-medium text-[var(--color-text)]">
+                  Upload photos from your computer or phone
+                </p>
+                <p className="text-[11px] text-[var(--color-text-muted)]">
+                  Supports JPG, PNG, WEBP files directly from local storage
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                leftIcon={<FolderOpen className="w-3.5 h-3.5" />}
+              >
+                Browse Device Files
+              </Button>
+            </div>
 
             {/* Quick Photo Presets */}
             <div>
-              <span className="text-[11px] text-[var(--color-text-muted)] block mb-1.5">Quick Add Presets:</span>
+              <span className="text-[11px] text-[var(--color-text-muted)] block mb-1.5">Or Select HD Presets:</span>
               <div className="flex flex-wrap gap-1.5">
                 {PRESET_PHOTOS.map((p) => (
                   <button
@@ -952,23 +1148,23 @@ export default function Properties() {
                 type="text"
                 value={customPhotoUrl}
                 onChange={(e) => setCustomPhotoUrl(e.target.value)}
-                placeholder="Paste external photo URL (https://...)"
+                placeholder="Or paste image link (https://...)"
                 className="flex-1 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[12px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
               <Button type="button" variant="outline" size="sm" onClick={addCustomPhoto}>
-                Add Photo
+                Add Link
               </Button>
             </div>
 
             {/* Selected Photo Thumbnails */}
             <div className="flex flex-wrap gap-2 pt-1">
-              {formData.images.map((img) => (
-                <div key={img} className="relative w-16 h-12 rounded-[4px] overflow-hidden border border-[var(--color-border)] group">
+              {formData.images.map((img, idx) => (
+                <div key={idx} className="relative w-16 h-12 rounded-[4px] overflow-hidden border border-[var(--color-border)] group">
                   <img src={img} alt="Property" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => removePhoto(img)}
-                    className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-[2px] p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-[2px] p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
