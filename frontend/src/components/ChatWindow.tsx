@@ -359,12 +359,22 @@ export default function ChatWindow({ conversationId, initialConversation, onMode
                 >
                   {msg.media_url && (
                     <div className="mb-2 rounded-[4px] overflow-hidden max-w-sm">
-                      <img 
-                        src={msg.media_url} 
-                        alt="Property photograph" 
-                        className="w-full h-auto max-h-56 object-cover rounded-[4px] cursor-pointer hover:opacity-95 transition-opacity"
-                        onClick={() => window.open(msg.media_url, '_blank')}
-                      />
+                      {msg.message_type === 'video' || msg.media_url.endsWith('.mp4') || msg.media_url.includes('/videos/') ? (
+                        <video 
+                          src={msg.media_url} 
+                          controls 
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-auto max-h-64 object-cover rounded-[4px] bg-black"
+                        />
+                      ) : (
+                        <img 
+                          src={msg.media_url} 
+                          alt="Property photograph" 
+                          className="w-full h-auto max-h-56 object-cover rounded-[4px] cursor-pointer hover:opacity-95 transition-opacity"
+                          onClick={() => window.open(msg.media_url, '_blank')}
+                        />
+                      )}
                     </div>
                   )}
                   {msg.text_content && (

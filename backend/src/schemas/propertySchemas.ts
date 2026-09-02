@@ -46,6 +46,9 @@ export const createPropertySchema = z.object({
     developer_name: z.string().max(500).optional(),
     rera_number: z.string().max(100).optional(),
     possession_date: z.string().optional(),
+    images: z.array(z.string()).optional(),
+    videos: z.array(z.string()).optional(),
+    video_metadata: z.array(z.any()).optional(),
   }).refine(
     (data) => {
       if (data.price_min !== undefined && data.price_max !== undefined) {
@@ -89,6 +92,9 @@ export const updatePropertySchema = z.object({
     developer_name: z.string().max(500).optional(),
     rera_number: z.string().max(100).optional(),
     possession_date: z.string().optional(),
+    images: z.array(z.string()).optional(),
+    videos: z.array(z.string()).optional(),
+    video_metadata: z.array(z.any()).optional(),
   }).refine(
     (data) => {
       if (data.price_min !== undefined && data.price_max !== undefined) {

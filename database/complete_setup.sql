@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS properties (
     possession_date DATE,
     brochure_url TEXT,
     images TEXT[] DEFAULT ARRAY[]::TEXT[],
+    videos TEXT[] DEFAULT ARRAY[]::TEXT[],
+    video_metadata JSONB DEFAULT '[]'::JSONB,
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

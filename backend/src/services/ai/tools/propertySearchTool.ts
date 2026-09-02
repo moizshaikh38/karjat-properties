@@ -64,6 +64,8 @@ export const executePropertySearch = async (leadId: string, args: any = {}) => {
         carpetArea: p.carpet_area_sqft || p.area_sqft,
         amenities: p.amenities,
         images: Array.isArray(p.images) ? p.images : [],
+        videos: Array.isArray(p.videos) ? p.videos : [],
+        video_metadata: Array.isArray(p.video_metadata) ? p.video_metadata : [],
         description: p.description,
         matchReasons: p.matchReasons
       })),
@@ -79,6 +81,8 @@ export const executePropertySearch = async (leadId: string, args: any = {}) => {
         carpetArea: p.carpet_area_sqft || p.area_sqft,
         amenities: p.amenities,
         images: Array.isArray(p.images) ? p.images : [],
+        videos: Array.isArray(p.videos) ? p.videos : [],
+        video_metadata: Array.isArray(p.video_metadata) ? p.video_metadata : [],
         description: p.description,
         matchReasons: p.matchReasons
       }))

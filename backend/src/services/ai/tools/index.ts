@@ -14,3 +14,4 @@ export * from './scheduleFollowupTool';
 export * from './updateLeadRequirementsTool';
 export * from './logPropertyInteractionTool';
 export * from './sendPropertyToCustomerTool';
+export * from './sendPropertyVideoTool';

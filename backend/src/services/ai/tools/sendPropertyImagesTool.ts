@@ -73,7 +73,11 @@ export const executeSendPropertyImages = async (
     }
 
     if (images.length === 0) {
-      images = ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200'];
+      return {
+        success: true,
+        message: `No verified photos currently uploaded for ${propertyName}.`,
+        images: [],
+      };
     }
 
     const imagesToSend = images.slice(0, 3);

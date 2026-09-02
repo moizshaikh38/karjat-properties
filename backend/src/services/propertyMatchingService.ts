@@ -201,7 +201,7 @@ export const findMatchingProperties = async (leadId: string, options: MatchingOp
   try {
     let query = client
       .from('properties')
-      .select('id, title, name, location, city, price, bhk, property_type, size_sqft, carpet_area_sqft, plot_area_sqft, amenities, status, description, images')
+      .select('id, title, name, location, city, price, bhk, property_type, size_sqft, carpet_area_sqft, plot_area_sqft, amenities, status, description, images, videos, video_metadata')
       .in('status', ['available']);
 
     if (effectiveReq.preferred_bhk) {
@@ -231,6 +231,12 @@ export const findMatchingProperties = async (leadId: string, options: MatchingOp
           : (typeof p.images === 'string'
               ? (() => { try { return JSON.parse(p.images); } catch { return [p.images]; } })()
               : []),
+        videos: Array.isArray(p.videos)
+          ? p.videos
+          : (typeof p.videos === 'string'
+              ? (() => { try { return JSON.parse(p.videos); } catch { return [p.videos]; } })()
+              : []),
+        video_metadata: Array.isArray(p.video_metadata) ? p.video_metadata : [],
         status: p.status || 'available',
         description: p.description || ''
       }));

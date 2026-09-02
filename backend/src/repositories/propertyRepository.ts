@@ -230,7 +230,10 @@ export const searchProperties = async (
         carpet_area_sqft: prop.carpet_area_sqft,
         plot_area_sqft: prop.plot_area_sqft,
         status: prop.status,
-        primary_image: mediaData?.url ?? null,
+        primary_image: mediaData?.url ?? (Array.isArray(prop.images) && prop.images[0]) ?? null,
+        images: Array.isArray(prop.images) ? prop.images : [],
+        videos: Array.isArray(prop.videos) ? prop.videos : [],
+        video_metadata: Array.isArray(prop.video_metadata) ? prop.video_metadata : [],
         amenities: amenityNames,
       } as PropertySearchResult;
     })

@@ -14,6 +14,8 @@ import followupRoutes from './routes/followupRoutes';
 import siteVisitRoutes from './routes/siteVisitRoutes';
 import analyticsRoutes from './routes/analytics.routes';
 import campaignRoutes from './routes/campaign.routes';
+import mediaRoutes from './routes/mediaRoutes';
+import path from 'path';
 import {
   fast2smsWebhookRouter,
   webhookRouter as whatsappWebhookRouter,
@@ -76,11 +78,14 @@ app.use('/webhook', fast2smsWebhookRouter);
 // Apply general API rate limit to all /api routes
 app.use('/api', apiRateLimiter);
 
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+
 // API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/properties', propertyRoutes);
+app.use('/api/media', mediaRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/site-visits', siteVisitRoutes);

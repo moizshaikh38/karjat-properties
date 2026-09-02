@@ -25,7 +25,15 @@ import {
   Droplets,
   Zap,
   Sparkles,
-  FolderOpen
+  FolderOpen,
+  Video,
+  Play,
+  Star,
+  Loader2,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -75,6 +83,7 @@ const PRESET_PHOTOS = [
 export default function Properties() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'grid' | 'table'>('grid');
@@ -88,6 +97,13 @@ export default function Properties() {
   const [propertyToEdit, setPropertyToEdit] = useState<any | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Media upload & progress states
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [imageProgress, setImageProgress] = useState<number>(0);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<number>(0);
+  const [videoProcessingStatus, setVideoProcessingStatus] = useState<string>('');
 
   // Form State with Guntha, Acre, and Full Real Estate Specs
   const [formData, setFormData] = useState({
@@ -126,7 +142,9 @@ export default function Properties() {
     
     // Amenities & Media
     amenities: ['Private Swimming Pool', 'Landscaped Lawn & Garden', '24x7 Gated Security & CCTV'],
-    images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'],
+    images: [] as string[],
+    videos: [] as string[],
+    video_metadata: [] as any[],
   });
 
   const [customPhotoUrl, setCustomPhotoUrl] = useState('');
@@ -225,36 +243,160 @@ export default function Properties() {
     }));
   };
 
-  // Upload Local Photo Files From Device
-  const handleSystemFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Local Photo Files to Backend with Sharp Optimization
+  const handleSystemFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    let addedCount = 0;
-    Array.from(files).forEach((file) => {
-      if (!file.type.startsWith('image/')) {
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        validFiles.push(file);
+      } else {
         toast.error(`${file.name} is not an image file`);
-        return;
       }
+    }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        if (dataUrl) {
-          setFormData((prev) => ({
-            ...prev,
-            images: [...prev.images, dataUrl],
-          }));
-          addedCount++;
-          if (addedCount === files.length) {
-            toast.success(`Added ${addedCount} photo(s) from your device`);
+    if (validFiles.length === 0) return;
+
+    try {
+      setIsUploadingImages(true);
+      setImageProgress(15);
+
+      const formPayload = new FormData();
+      validFiles.forEach((f) => formPayload.append('files', f));
+
+      const res = await api.post('/media/upload/images', formPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const pct = Math.round((progressEvent.loaded * 80) / progressEvent.total);
+            setImageProgress(pct);
           }
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+        },
+      });
 
-    if (e.target) e.target.value = '';
+      setImageProgress(100);
+      const uploadedList = res.data?.data?.media || [];
+      const newUrls = uploadedList.map((m: any) => m.url);
+
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...newUrls],
+      }));
+
+      toast.success(`Successfully uploaded and optimized ${newUrls.length} photo(s)`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to upload images');
+    } finally {
+      setIsUploadingImages(false);
+      setImageProgress(0);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  // Upload Video File to Backend with Stream Processing
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/') && !file.name.endsWith('.mp4') && !file.name.endsWith('.mov')) {
+      toast.error('Only MP4 and MOV video files are supported');
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('Video file size exceeds 100MB limit');
+      return;
+    }
+
+    try {
+      setIsUploadingVideo(true);
+      setVideoProgress(15);
+      setVideoProcessingStatus('Uploading video...');
+
+      const formPayload = new FormData();
+      formPayload.append('file', file);
+
+      const res = await api.post('/media/upload/video', formPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const pct = Math.round((progressEvent.loaded * 70) / progressEvent.total);
+            setVideoProgress(pct);
+            if (pct >= 70) {
+              setVideoProcessingStatus('Optimizing video & generating poster...');
+            }
+          }
+        },
+      });
+
+      setVideoProgress(100);
+      setVideoProcessingStatus('Ready ✅');
+
+      const videoData = res.data?.data;
+      if (videoData?.video_url) {
+        setFormData((prev) => ({
+          ...prev,
+          videos: [...prev.videos, videoData.video_url],
+          video_metadata: [
+            ...prev.video_metadata,
+            {
+              url: videoData.video_url,
+              thumbnail_url: videoData.video_thumbnail_url,
+              duration: videoData.duration,
+              size: videoData.size,
+              filename: file.name,
+              status: videoData.status || 'ready',
+            },
+          ],
+        }));
+        toast.success('Property walkthrough video uploaded and optimized');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to upload video');
+    } finally {
+      setTimeout(() => {
+        setIsUploadingVideo(false);
+        setVideoProgress(0);
+        setVideoProcessingStatus('');
+      }, 1200);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const movePhoto = (index: number, direction: 'left' | 'right') => {
+    setFormData((prev) => {
+      const newImages = [...prev.images];
+      const targetIndex = direction === 'left' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= newImages.length) return prev;
+      const temp = newImages[index];
+      newImages[index] = newImages[targetIndex];
+      newImages[targetIndex] = temp;
+      return { ...prev, images: newImages };
+    });
+  };
+
+  const setPrimaryPhoto = (index: number) => {
+    if (index === 0) return;
+    setFormData((prev) => {
+      const newImages = [...prev.images];
+      const selected = newImages.splice(index, 1)[0];
+      newImages.unshift(selected);
+      return { ...prev, images: newImages };
+    });
+    toast.success('Set as primary property photo');
+  };
+
+  const removeVideo = (index: number) => {
+    setFormData((prev) => {
+      const newVideos = [...prev.videos];
+      newVideos.splice(index, 1);
+      const newMeta = [...prev.video_metadata];
+      newMeta.splice(index, 1);
+      return { ...prev, videos: newVideos, video_metadata: newMeta };
+    });
   };
 
   const handleOpenAdd = () => {
@@ -285,7 +427,9 @@ export default function Properties() {
       road_access: 'Tar Road Touch',
       facing_view: 'Mountain & River View',
       amenities: ['Private Swimming Pool', 'Landscaped Lawn & Garden', '24x7 Gated Security & CCTV'],
-      images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'],
+      images: [],
+      videos: [],
+      video_metadata: [],
     });
     setIsAddModalOpen(true);
   };
@@ -336,7 +480,9 @@ export default function Properties() {
       road_access: 'Tar Road Touch',
       facing_view: 'Mountain View',
       amenities: Array.isArray(prop.amenities) ? prop.amenities : ['Private Swimming Pool', '24x7 Security'],
-      images: prop.images?.length ? prop.images : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'],
+      images: Array.isArray(prop.images) ? prop.images : [],
+      videos: Array.isArray(prop.videos) ? prop.videos : [],
+      video_metadata: Array.isArray(prop.video_metadata) ? prop.video_metadata : [],
     });
     setIsEditModalOpen(true);
   };
@@ -370,6 +516,8 @@ export default function Properties() {
         furnished_status: formData.furnishing,
         amenities: formData.amenities,
         images: formData.images,
+        videos: formData.videos,
+        video_metadata: formData.video_metadata,
       };
 
       if (isEdit) {
@@ -1081,96 +1229,320 @@ export default function Properties() {
             </div>
           </div>
 
-          {/* SECTION 5: SYSTEM PHOTO UPLOAD & PRESET MEDIA */}
-          <div className="border border-[var(--color-border)] rounded-[6px] p-3.5 space-y-3 bg-[var(--color-surface)]">
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium text-[var(--color-text)] block">
-                5. Property Photos & System File Upload
-              </span>
-              <span className="text-[11px] text-[var(--color-accent)]">
-                {formData.images.length} photo(s) attached
-              </span>
+          {/* SECTION 5: PROPERTY MEDIA (PHOTOS & VIDEO WALKTHROUGH) */}
+          <div className="border border-[var(--color-border)] rounded-[6px] p-4 space-y-4 bg-[var(--color-surface)]">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
+              <div>
+                <span className="text-[13px] font-semibold text-[var(--color-text)] block font-display">
+                  5. Property Media (HD Photos & Video Walkthrough)
+                </span>
+                <span className="text-[11px] text-[var(--color-text-muted)]">
+                  Upload optimized property photos and estate walkthrough videos for WhatsApp delivery.
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Badge variant="default" size="sm">
+                  {formData.images.length} Photo(s)
+                </Badge>
+                <Badge variant={formData.videos.length ? 'success' : 'default'} size="sm">
+                  {formData.videos.length} Video(s)
+                </Badge>
+              </div>
             </div>
 
-            {/* UPLOAD FROM SYSTEM / COMPUTER BUTTON & DRAG-AND-DROP */}
-            <div className="p-4 bg-[var(--color-surface-elevated)]/60 border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors rounded-[6px] text-center space-y-2">
+            {/* PART A: PHOTO UPLOAD */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11.5px] font-medium text-[var(--color-text)] uppercase tracking-wider">
+                  Estate Photographs
+                </span>
+                <span className="text-[10.5px] text-[var(--color-text-muted)]">
+                  Sharp auto-compression (Max 1920px · WebP/JPG)
+                </span>
+              </div>
+
+              {/* Upload Dropzone */}
+              <div className="p-4 bg-[var(--color-surface-elevated)]/60 border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors rounded-[6px] text-center space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleSystemFileUpload}
+                  className="hidden"
+                />
+                <div className="flex justify-center">
+                  <div className="w-9 h-9 rounded-full bg-[var(--color-accent)]/15 flex items-center justify-center text-[var(--color-accent)]">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[12.5px] font-medium text-[var(--color-text)]">
+                    Select photos from your device
+                  </p>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">
+                    JPG, PNG, WebP, HEIC supported · Multi-file upload
+                  </p>
+                </div>
+
+                {isUploadingImages && (
+                  <div className="max-w-xs mx-auto space-y-1 py-1">
+                    <div className="flex justify-between text-[11px] font-mono text-[var(--color-accent)]">
+                      <span className="flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Optimizing with Sharp...
+                      </span>
+                      <span>{imageProgress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[var(--color-accent)] transition-all duration-300 rounded-full"
+                        style={{ width: `${imageProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingImages}
+                  onClick={() => fileInputRef.current?.click()}
+                  leftIcon={<FolderOpen className="w-3.5 h-3.5" />}
+                >
+                  {isUploadingImages ? 'Processing...' : 'Browse Photo Files'}
+                </Button>
+              </div>
+
+              {/* Photo Presets & Custom URL */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="text-[11px] text-[var(--color-text-muted)] mr-1">Quick Presets:</span>
+                  {PRESET_PHOTOS.slice(0, 4).map((p) => (
+                    <button
+                      type="button"
+                      key={p.label}
+                      onClick={() => addPhotoPreset(p.url)}
+                      className="px-2 py-0.5 bg-[var(--color-surface-elevated)] text-[var(--color-text)] hover:border-[var(--color-accent)] border border-[var(--color-border)] rounded-[4px] text-[10.5px] cursor-pointer"
+                    >
+                      + {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-1.5 flex-1 max-w-sm">
+                  <input
+                    type="text"
+                    value={customPhotoUrl}
+                    onChange={(e) => setCustomPhotoUrl(e.target.value)}
+                    placeholder="Paste image URL (https://...)"
+                    className="flex-1 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[4px] px-2.5 py-1 text-[11.5px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addCustomPhoto}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Photo Gallery with Reordering & Primary Selection */}
+              {formData.images.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)]">
+                    <span>Uploaded Photos ({formData.images.length})</span>
+                    <span>First image is Primary (sent first on WhatsApp)</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {formData.images.map((img, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`relative rounded-[6px] overflow-hidden border bg-[var(--color-surface-elevated)] group ${
+                          idx === 0 ? 'border-[var(--color-accent)] shadow-xs' : 'border-[var(--color-border)]'
+                        }`}
+                      >
+                        <div className="aspect-4/3 w-full overflow-hidden bg-black/20">
+                          <img src={img} alt={`Property photo ${idx + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                        
+                        {/* Primary Badge */}
+                        {idx === 0 ? (
+                          <div className="absolute top-1 left-1 bg-[var(--color-accent)] text-white text-[9.5px] font-medium px-1.5 py-0.5 rounded-[3px] shadow-xs flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-current" /> Primary
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setPrimaryPhoto(idx)}
+                            className="absolute top-1 left-1 bg-black/60 hover:bg-[var(--color-accent)] text-white text-[9.5px] px-1.5 py-0.5 rounded-[3px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            Set Primary
+                          </button>
+                        )}
+
+                        {/* Controls Bar */}
+                        <div className="p-1 flex items-center justify-between bg-[var(--color-surface)] border-t border-[var(--color-border)]">
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => movePhoto(idx, 'left')}
+                              className={`p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)] ${
+                                idx === 0 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--color-surface-elevated)]'
+                              }`}
+                              title="Move left"
+                            >
+                              <ArrowLeft className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === formData.images.length - 1}
+                              onClick={() => movePhoto(idx, 'right')}
+                              className={`p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)] ${
+                                idx === formData.images.length - 1 ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:bg-[var(--color-surface-elevated)]'
+                              }`}
+                              title="Move right"
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(img)}
+                            className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-status-hot)] rounded cursor-pointer hover:bg-[var(--color-surface-elevated)]"
+                            title="Remove photo"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* PART B: VIDEO WALKTHROUGH UPLOAD */}
+            <div className="pt-3 border-t border-[var(--color-border)] space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[11.5px] font-medium text-[var(--color-text)] uppercase tracking-wider block">
+                    Property Video Walkthrough
+                  </span>
+                  <span className="text-[10.5px] text-[var(--color-text-muted)]">
+                    Dispatched automatically when customer asks "video bhejo" or requests a tour (Max 100MB · MP4/MOV)
+                  </span>
+                </div>
+              </div>
+
               <input
-                ref={fileInputRef}
+                ref={videoFileInputRef}
                 type="file"
-                multiple
-                accept="image/*"
-                onChange={handleSystemFileUpload}
+                accept="video/mp4,video/quicktime,video/x-m4v"
+                onChange={handleVideoUpload}
                 className="hidden"
               />
-              <div className="flex justify-center">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-accent)]/15 flex items-center justify-center text-[var(--color-accent)]">
-                  <Upload className="w-5 h-5" />
+
+              {formData.videos.length === 0 ? (
+                <div className="p-3.5 bg-[var(--color-surface-elevated)]/40 border border-[var(--color-border)] rounded-[6px] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center flex-shrink-0">
+                      <Video className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] font-medium text-[var(--color-text)]">
+                        No walkthrough video attached
+                      </p>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
+                        Upload short drone footage, villa walkthrough, or boundary tour
+                      </p>
+                    </div>
+                  </div>
+
+                  {isUploadingVideo ? (
+                    <div className="w-48 space-y-1">
+                      <div className="flex justify-between text-[10.5px] font-mono text-[var(--color-accent)]">
+                        <span className="truncate">{videoProcessingStatus}</span>
+                        <span>{videoProgress}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--color-border)] rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
+                          style={{ width: `${videoProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => videoFileInputRef.current?.click()}
+                      leftIcon={<Video className="w-3.5 h-3.5 text-emerald-500" />}
+                    >
+                      Upload Video (MP4)
+                    </Button>
+                  )}
                 </div>
-              </div>
-              <div>
-                <p className="text-[13px] font-medium text-[var(--color-text)]">
-                  Upload photos from your computer or phone
-                </p>
-                <p className="text-[11px] text-[var(--color-text-muted)]">
-                  Supports JPG, PNG, WEBP files directly from local storage
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                leftIcon={<FolderOpen className="w-3.5 h-3.5" />}
-              >
-                Browse Device Files
-              </Button>
-            </div>
+              ) : (
+                <div className="space-y-2">
+                  {formData.videos.map((vidUrl, vIdx) => {
+                    const meta = formData.video_metadata?.[vIdx] || {};
+                    return (
+                      <div 
+                        key={vIdx}
+                        className="p-3 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-16 h-12 rounded-[4px] overflow-hidden bg-black flex-shrink-0 border border-[var(--color-border)]">
+                            {meta.thumbnail_url ? (
+                              <img src={meta.thumbnail_url} alt="Video poster" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-white/60">
+                                <Play className="w-4 h-4 fill-current" />
+                              </div>
+                            )}
+                            <div className="absolute bottom-0.5 right-0.5 bg-black/80 text-white text-[8.5px] font-mono px-1 rounded">
+                              {meta.duration ? `${meta.duration}s` : 'MP4'}
+                            </div>
+                          </div>
 
-            {/* Quick Photo Presets */}
-            <div>
-              <span className="text-[11px] text-[var(--color-text-muted)] block mb-1.5">Or Select HD Presets:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {PRESET_PHOTOS.map((p) => (
-                  <button
-                    type="button"
-                    key={p.label}
-                    onClick={() => addPhotoPreset(p.url)}
-                    className="px-2 py-0.5 bg-[var(--color-surface-elevated)] text-[var(--color-text)] hover:border-[var(--color-accent)] border border-[var(--color-border)] rounded-[4px] text-[11px] cursor-pointer"
-                  >
-                    + {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[12.5px] font-medium text-[var(--color-text)] block truncate max-w-xs">
+                              {meta.filename || 'Property Walkthrough Video'}
+                            </span>
+                            <div className="flex items-center gap-2 text-[10.5px] text-[var(--color-text-muted)] font-mono">
+                              <span>{meta.size ? `${(meta.size / (1024 * 1024)).toFixed(1)} MB` : 'Optimized'}</span>
+                              <span>·</span>
+                              <span className="text-emerald-500 font-medium">Ready for WhatsApp</span>
+                            </div>
+                          </div>
+                        </div>
 
-            {/* Custom Photo URL */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customPhotoUrl}
-                onChange={(e) => setCustomPhotoUrl(e.target.value)}
-                placeholder="Or paste image link (https://...)"
-                className="flex-1 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[12px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-              />
-              <Button type="button" variant="outline" size="sm" onClick={addCustomPhoto}>
-                Add Link
-              </Button>
-            </div>
-
-            {/* Selected Photo Thumbnails */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {formData.images.map((img, idx) => (
-                <div key={idx} className="relative w-16 h-12 rounded-[4px] overflow-hidden border border-[var(--color-border)] group">
-                  <img src={img} alt="Property" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(img)}
-                    className="absolute top-0.5 right-0.5 bg-black/70 text-white rounded-[2px] p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(vidUrl, '_blank')}
+                            leftIcon={<Play className="w-3 h-3" />}
+                          >
+                            Preview
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() => removeVideo(vIdx)}
+                            leftIcon={<X className="w-3.5 h-3.5" />}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
           </div>
 

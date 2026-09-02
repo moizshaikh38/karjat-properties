@@ -47,6 +47,8 @@ import {
   executeLogPropertyInteraction,
   sendPropertyToCustomerToolDefinition,
   executeSendPropertyToCustomer,
+  sendPropertyVideoToolDefinition,
+  executeSendPropertyVideo,
 } from './tools';
 
 export class SalesAgentService {
@@ -145,6 +147,7 @@ export class SalesAgentService {
         updateLeadRequirementsToolDefinition,
         logPropertyInteractionToolDefinition,
         sendPropertyToCustomerToolDefinition,
+        sendPropertyVideoToolDefinition,
       ];
 
       const aiProvider = getAIProvider();
@@ -258,6 +261,9 @@ export class SalesAgentService {
                   if (toolResult?.property) {
                     discoveredProperties.push(toolResult.property);
                   }
+                  break;
+                case 'sendPropertyVideo':
+                  toolResult = await executeSendPropertyVideo(conversationId, ctx.lead.id, call.arguments);
                   break;
                 default:
                   toolResult = { error: `Unknown tool: ${call.name}` };
@@ -433,6 +439,67 @@ export class SalesAgentService {
                   });
                 } catch (dbErr: any) {
                   logger.warn({ error: dbErr.message }, 'Failed to save media message record');
+                }
+              }
+            }
+
+            // Rule 18 & 19: Check if customer explicitly requested or showed interest in a video walkthrough
+            const customerIncomingText = (ctx.messages[ctx.messages.length - 1]?.content || '').toLowerCase();
+            const responseText = (finalResponseContent || '').toLowerCase();
+            const wantsVideo = 
+              customerIncomingText.includes('video') || 
+              customerIncomingText.includes('clip') || 
+              customerIncomingText.includes('walkthrough') || 
+              customerIncomingText.includes('tour') || 
+              customerIncomingText.includes('video bhejo') || 
+              customerIncomingText.includes('send video') ||
+              responseText.includes('video sent') ||
+              responseText.includes('sharing the walkthrough video');
+
+            if (wantsVideo) {
+              let videoSent = false;
+              for (const prop of propertiesToDispatch) {
+                if (videoSent) break; // Rule 19: Maximum 1 video per turn
+                if (!(await shouldAIRespond(conversationId))) break; // Rule 20: Human mode safety
+
+                const videos: string[] = Array.isArray(prop.videos) ? prop.videos : [];
+                if (videos.length === 0) continue;
+
+                const videoUrl = videos[0];
+                if (!videoUrl || !videoUrl.startsWith('http')) continue; // Rule 21: URL validation
+
+                const caption = `🎥 Verified Walkthrough Video · ${prop.title || prop.name || 'Karjat Property'}`;
+                let videoMsgId = `video-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+                try {
+                  logger.info({ conversationId, propId: prop.id, videoUrl }, 'Dispatching property video via Fast2SMS');
+                  const videoRes = await whatsappMessageService.sendVideo({
+                    to: ctx.conversation.whatsapp_phone,
+                    url: videoUrl,
+                    caption,
+                  });
+                  if (videoRes?.messageId) videoMsgId = videoRes.messageId;
+                  videoSent = true;
+                } catch (videoErr: any) {
+                  logger.error({ error: videoErr.message, propId: prop.id, videoUrl }, 'Failed to dispatch property video via Fast2SMS');
+                  continue;
+                }
+
+                // Record outgoing video message in database for CRM Inbox
+                try {
+                  await messageRepo.createMessage({
+                    conversation_id: conversationId,
+                    whatsapp_message_id: videoMsgId,
+                    direction: 'outgoing',
+                    message_type: 'video',
+                    recipient_phone: ctx.conversation.whatsapp_phone,
+                    text_content: caption,
+                    media_url: videoUrl,
+                    status: 'sent',
+                    sent_at: new Date().toISOString(),
+                  });
+                } catch (dbErr: any) {
+                  logger.warn({ error: dbErr.message }, 'Failed to save video message record');
                 }
               }
             }

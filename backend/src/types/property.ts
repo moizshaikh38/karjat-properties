@@ -47,6 +47,9 @@ export interface PropertyRow {
   developer_name: string | null;
   rera_number: string | null;
   possession_date: string | null;
+  images?: string[];
+  videos?: string[];
+  video_metadata?: any[];
   created_at: string;
   updated_at: string;
 }
@@ -97,6 +100,9 @@ export interface CreatePropertyInput {
   developer_name?: string;
   rera_number?: string;
   possession_date?: string;
+  images?: string[];
+  videos?: string[];
+  video_metadata?: any[];
 }
 
 export interface UpdatePropertyInput {
@@ -123,6 +129,9 @@ export interface UpdatePropertyInput {
   developer_name?: string;
   rera_number?: string;
   possession_date?: string;
+  images?: string[];
+  videos?: string[];
+  video_metadata?: any[];
 }
 
 export interface AddPropertyMediaInput {
@@ -183,6 +192,9 @@ export interface PropertySearchResult {
   plot_area_sqft: number | null;
   status: PropertyStatus;
   primary_image: string | null;
+  images?: string[];
+  videos?: string[];
+  video_metadata?: any[];
   amenities: string[];
 }
 
