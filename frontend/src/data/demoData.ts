@@ -1,5 +1,5 @@
 // =========================================================================
-// Karjat Properties CRM - Complete High-Grade Client Demo Data
+// Karjat Properties CRM - Complete High-Grade Client Demo Data & AI Conversations
 // =========================================================================
 
 export const DEMO_PROPERTIES = [
@@ -198,11 +198,11 @@ export const DEMO_LEADS = [
     assigned_to: 'Moiz Shaikh',
     preferred_locations: ['Kashele, Karjat'],
     property_type: 'villa',
-    preferred_bhk: '3',
-    budget_min: 15000000,
+    preferred_bhk: '4',
+    budget_min: 20000000,
     budget_max: 25000000,
     created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-    last_activity: 'Scheduled site visit for Kashele Riverside Villa on Saturday 11:00 AM'
+    last_activity: 'AI confirmed Saturday 11:30 AM site visit for Kashele Riverside 4BHK Villa'
   },
   {
     id: 'lead-2',
@@ -213,16 +213,16 @@ export const DEMO_LEADS = [
     classification: 'HOT',
     temperature: 'HOT',
     priority: 'URGENT',
-    lead_score: 91,
-    status: 'negotiation',
+    lead_score: 92,
+    status: 'property_discussion',
     assigned_to: 'Moiz Shaikh',
-    preferred_locations: ['Kashele, Karjat', 'Bhilavle, Karjat'],
+    preferred_locations: ['Kashele, Karjat'],
     property_type: 'plot',
     preferred_bhk: '10 Guntha',
-    budget_min: 3000000,
+    budget_min: 3500000,
     budget_max: 4500000,
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-    last_activity: 'Requested title deed & 7/12 extract copy for 10 Guntha NA plot'
+    created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+    last_activity: 'AI dispatched 10 Guntha Sanctioned NA layout drawings & 7/12 extract'
   },
   {
     id: 'lead-3',
@@ -233,36 +233,36 @@ export const DEMO_LEADS = [
     classification: 'HOT',
     temperature: 'HOT',
     priority: 'HIGH',
-    lead_score: 88,
-    status: 'property_discussion',
+    lead_score: 89,
+    status: 'site_visit',
     assigned_to: 'Sameer Patil',
     preferred_locations: ['Khandpe, Karjat'],
     property_type: 'plot',
     preferred_bhk: '2.5 Acres',
     budget_min: 15000000,
     budget_max: 20000000,
-    created_at: new Date(Date.now() - 3600000 * 20).toISOString(),
-    last_activity: 'Discussing 2.5 Acre agro-tourism zoning & road connectivity'
+    created_at: new Date(Date.now() - 3600000 * 16).toISOString(),
+    last_activity: 'AI scheduled Sunday 2:00 PM site inspection for 2.5 Acre Khandpe agro land'
   },
   {
     id: 'lead-4',
     name: 'Rajesh Singhania',
     phone: '+919819077412',
     email: 'rajesh@singhaniagroup.in',
-    source: 'campaign',
+    source: 'whatsapp',
     classification: 'HOT',
     temperature: 'VERY_HOT',
     priority: 'URGENT',
     lead_score: 98,
     status: 'site_visit',
     assigned_to: 'Moiz Shaikh',
-    preferred_locations: ['Kashele, Karjat'],
+    preferred_locations: ['Kashele, Karjat', 'Bhilavle, Karjat'],
     property_type: 'villa',
     preferred_bhk: '4',
-    budget_min: 20000000,
+    budget_min: 24000000,
     budget_max: 30000000,
-    created_at: new Date(Date.now() - 3600000 * 28).toISOString(),
-    last_activity: 'Site visit confirmed with family for Kashele 4BHK Villa on Sunday 2:30 PM'
+    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+    last_activity: 'AI reserved Sunday 2:30 PM private VIP walkthrough for Kashele 4BHK Estate'
   },
   {
     id: 'lead-5',
@@ -273,7 +273,7 @@ export const DEMO_LEADS = [
     classification: 'WARM',
     temperature: 'WARM',
     priority: 'MEDIUM',
-    lead_score: 76,
+    lead_score: 78,
     status: 'qualified',
     assigned_to: 'Pooja Sawant',
     preferred_locations: ['Neral-Karjat Road'],
@@ -281,8 +281,8 @@ export const DEMO_LEADS = [
     preferred_bhk: '3',
     budget_min: 12000000,
     budget_max: 18000000,
-    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-    last_activity: 'Qualified buyer looking for gated villa with swimming pool'
+    created_at: new Date(Date.now() - 3600000 * 36).toISOString(),
+    last_activity: 'AI qualified buyer budget & shared bank loan sanction details'
   },
   {
     id: 'lead-6',
@@ -293,8 +293,8 @@ export const DEMO_LEADS = [
     classification: 'WARM',
     temperature: 'WARM',
     priority: 'MEDIUM',
-    lead_score: 82,
-    status: 'new',
+    lead_score: 84,
+    status: 'property_discussion',
     assigned_to: 'Moiz Shaikh',
     preferred_locations: ['Bhilavle, Karjat'],
     property_type: 'farmhouse',
@@ -302,7 +302,7 @@ export const DEMO_LEADS = [
     budget_min: 25000000,
     budget_max: 35000000,
     created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    last_activity: 'New inquiry: Asked about 1.2 Acre Mango Orchard Farmhouse in Bhilavle'
+    last_activity: 'AI presented 1.2 Acre Bhilavle mango orchard specs & water well infrastructure'
   }
 ];
 
@@ -315,23 +315,100 @@ export const DEMO_CONVERSATIONS = [
     last_message_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
     lead: DEMO_LEADS[0],
     messages: [
-      { id: 'm1', direction: 'incoming', text_content: 'Namaskar, I saw your Kashele villa listing. Is it river-touch?', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString() },
-      { id: 'm2', direction: 'outgoing', text_content: 'Namaskar Rohit ji! Yes, our Kashele Riverside 4BHK Villa is directly riverfront with clear private access and an infinity pool. Total plot area is 12,000 sqft (Sanctioned NA). Would you like to review the brochure or schedule a guided visit this Saturday?', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 34).toISOString() },
-      { id: 'm3', direction: 'incoming', text_content: 'Yes please, Saturday around 11:00 AM works for my family.', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-      { id: 'm4', direction: 'outgoing', text_content: 'Perfect Rohit ji! I have reserved Saturday 11:00 AM for your family site visit. Our senior Karjat estate executive will receive you and guide you through the property. Have a great day!', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
+      {
+        id: 'msg-101',
+        direction: 'incoming',
+        text_content: 'Hi, I am looking for a weekend villa in Karjat with river touch and private pool. Do you have anything ready for immediate possession?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 38).toISOString()
+      },
+      {
+        id: 'msg-102',
+        direction: 'outgoing',
+        text_content: 'Namaskar Rohit ji! 🙏 Yes, we have our exclusive Kashele Riverside 4BHK Luxury Pool Villa available:\n\n• Total Land: 12,000 Sq.Ft. (Collector Sanctioned NA with clear 7/12 title)\n• Built-up: 3,800 Sq.Ft. (4 Master Bedrooms, Private Infinity Pool, Landscaped Lawn)\n• Location: Kashele, Karjat (Direct perennial riverfront access + mountain view)\n• Price: ₹2.40 Cr (Negotiable)\n\nWould you like me to share the detailed PDF brochure, or would you prefer a guided weekend site visit with our executive?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 37).toISOString()
+      },
+      {
+        id: 'msg-103',
+        direction: 'incoming',
+        text_content: 'Looks very promising. Is the road touch clear for driving from Mumbai? And can we visit this Saturday?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 20).toISOString()
+      },
+      {
+        id: 'msg-104',
+        direction: 'outgoing',
+        text_content: 'Ji Rohit ji, direct tar road touch hai—Bandra/Powai se approx 1 hr 45 mins drive hai via Mumbai-Pune Expressway & Karjat-Murbad Highway. 🚗\n\nHum Saturday aapke liye site visit coordinate kar sakte hain. Kya Saturday 11:30 AM ka slot aapke aur family ke liye comfortable rahega?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 19).toISOString()
+      },
+      {
+        id: 'msg-105',
+        direction: 'incoming',
+        text_content: 'Yes, Saturday 11:30 AM is perfect. We will be coming by car.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 14).toISOString()
+      },
+      {
+        id: 'msg-106',
+        direction: 'outgoing',
+        text_content: 'Done Rohit ji! 🎉 Saturday 11:30 AM site visit confirm ho gaya hai. Hamare senior field executive Mr. Sameer (+91 98220 55142) aapko Kashele site par receive karenge aur complete property tour karwayenge. Main aapko WhatsApp location share kar raha hoon. Looking forward to hosting you!',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString()
+      }
     ]
   },
   {
     id: 'conv-2',
     whatsapp_phone: '+919821299342',
-    mode: 'human',
+    mode: 'ai',
     status: 'active',
-    last_message_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    last_message_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
     lead: DEMO_LEADS[1],
     messages: [
-      { id: 'm21', direction: 'incoming', text_content: 'Hi, do you have sanctioned NA plots in Kashele around 10 to 15 Guntha?', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString() },
-      { id: 'm22', direction: 'outgoing', text_content: 'Hello Dr. Sharma! Yes, we have a prime 10 Guntha (10,890 sqft) Collector-Approved NA plot in Kashele Valley at ₹38 Lakhs with 7/12 clear title and 9m road touch.', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 85).toISOString() },
-      { id: 'm23', direction: 'incoming', text_content: 'Can you send the 7/12 extract and layout plan for legal verification?', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString() },
+      {
+        id: 'msg-201',
+        direction: 'incoming',
+        text_content: 'Hello, looking for residential NA plots in Karjat around 10 to 15 Guntha. Clear title only please.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 75).toISOString()
+      },
+      {
+        id: 'msg-202',
+        direction: 'outgoing',
+        text_content: 'Hello Dr. Sharma! 🙏 We have a prime gated layout in Kashele Valley:\n\n• Plot Size: 10 Guntha (10,890 Sq.Ft. / 0.25 Acre)\n• Title: Collector-Approved Sanctioned NA with individual 7/12 extract\n• Infrastructure: 9m internal tar road, 3-Phase MSEDCL power, borewell + Gram Panchayat water line\n• Price: ₹38 Lakhs (All inclusive title transfer)\n\nBoundary stones are already demarcated. Would you like to review the layout plan?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 74).toISOString()
+      },
+      {
+        id: 'msg-203',
+        direction: 'incoming',
+        text_content: 'What about the FSI and permission to construct a 3BHK bungalow on this 10 Guntha plot?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 48).toISOString()
+      },
+      {
+        id: 'msg-204',
+        direction: 'outgoing',
+        text_content: 'Being Sanctioned Residential NA, you get 1.0 FSI with instant plan sanctioning from Town Planning / Gram Panchayat. You can easily construct up to 4,000+ sqft built-up area.\n\nHamare paas complete legal search report aur RERA sanction copy ready hai. Would you like me to send the 7/12 extract PDF right now?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 47).toISOString()
+      },
+      {
+        id: 'msg-205',
+        direction: 'incoming',
+        text_content: 'Yes please send over the 7/12 and location pin.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 36).toISOString()
+      },
+      {
+        id: 'msg-206',
+        direction: 'outgoing',
+        text_content: 'Sharing the layout drawing and 7/12 extract PDF right away Dr. Sharma. 📄 Agar aap chahein toh Sunday afternoon ko site inspection arrange kar sakte hain. Let me know!',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString()
+      }
     ]
   },
   {
@@ -339,11 +416,165 @@ export const DEMO_CONVERSATIONS = [
     whatsapp_phone: '+919765432189',
     mode: 'ai',
     status: 'active',
-    last_message_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    last_message_at: new Date(Date.now() - 1000 * 60 * 85).toISOString(),
     lead: DEMO_LEADS[2],
     messages: [
-      { id: 'm31', direction: 'incoming', text_content: 'Khandpe madhe 2 te 3 Acre agro land available aahe ka?', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString() },
-      { id: 'm32', direction: 'outgoing', text_content: 'Namaskar Vikramaditya ji! Ho, Khandpe madhe amchya kade 2.5 Acre (100 Guntha) table-top land available aahe. Tar road touch ani stream access aahe. Kimmat ₹1.80 Cr negotiable. Site visit karayla avdel ka?', status: 'read', created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString() },
+      {
+        id: 'msg-301',
+        direction: 'incoming',
+        text_content: 'Namaskar, Khandpe madhe 2 te 3 Acre resort / agro-tourism sathi land bhetel ka? Road touch pahije.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 140).toISOString()
+      },
+      {
+        id: 'msg-302',
+        direction: 'outgoing',
+        text_content: 'Namaskar Vikramaditya ji! 🙏 Ho, Khandpe madhe amchya kade ekdum prime property available aahe:\n\n• Area: 2.5 Acres (100 Guntha / 1,08,900 Sq.Ft.)\n• Features: Table-top flat land, continuous natural stream (nalla) touch, 360° mountain waterfall view\n• Connectivity: Direct tar road touch, 3-phase electricity line available\n• Title: 7/12 single owner clear title\n• Kimmat: ₹1.80 Cr (₹72 Lakhs/Acre)\n\nAgro-tourism resort, organic farmhouse, kivha wellness retreat sathi hi sarvat best option aahe.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 139).toISOString()
+      },
+      {
+        id: 'msg-303',
+        direction: 'incoming',
+        text_content: 'Agricultural land aahe tar non-farmer la kharedi karta yeil ka?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 92).toISOString()
+      },
+      {
+        id: 'msg-304',
+        direction: 'outgoing',
+        text_content: 'Ji Vikramaditya ji, Maharashtra Land Revenue Code anusar amchi legal team 89A permission kivha 11(A) Farmer certificate assist karte, jyamule process ekdum smooth hote. Amhi title search report provide karto.\n\nAaplyala ya weekend la Khandpe site visit karayla avdel ka?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 91).toISOString()
+      },
+      {
+        id: 'msg-305',
+        direction: 'incoming',
+        text_content: 'Ho, Sunday 2:00 PM la amhi Pune hun nighun yetoy.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 86).toISOString()
+      },
+      {
+        id: 'msg-306',
+        direction: 'outgoing',
+        text_content: 'Nakkich Vikramaditya ji! 👍 Sunday 2:00 PM cha slot confirm kela aahe. Amche executive site location share kartil. Dhanyawad!',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 85).toISOString()
+      }
+    ]
+  },
+  {
+    id: 'conv-4',
+    whatsapp_phone: '+919819077412',
+    mode: 'ai',
+    status: 'active',
+    last_message_at: new Date(Date.now() - 1000 * 60 * 110).toISOString(),
+    lead: DEMO_LEADS[3],
+    messages: [
+      {
+        id: 'msg-401',
+        direction: 'incoming',
+        text_content: 'Looking for ready possession 3-4 BHK fully furnished villa with swimming pool in Karjat. Budget around 2.5-3 Cr.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 150).toISOString()
+      },
+      {
+        id: 'msg-402',
+        direction: 'outgoing',
+        text_content: 'Namaskar Rajesh ji! 🙏 We have two immediate possession luxury options that match your criteria:\n\n1️⃣ Kashele Riverside 4BHK Estate (₹2.40 Cr):\n• 12,000 Sq.Ft. Sanctioned NA land, private infinity pool, fully furnished designer interiors.\n\n2️⃣ Bhilavle 1.2 Acre Mango Orchard Farmhouse (₹2.95 Cr):\n• 48 Guntha gated estate, 45 mature Alphonso trees, 3BHK stone villa, private plunge pool, and natural riverfront.\n\nBoth properties are 100% ready for possession with OC and clear 7/12 title. Which of these appeals more to your family?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 149).toISOString()
+      },
+      {
+        id: 'msg-403',
+        direction: 'incoming',
+        text_content: 'Kashele Riverside villa sounds interesting. Can you send actual photos and video walkthrough?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 125).toISOString()
+      },
+      {
+        id: 'msg-404',
+        direction: 'outgoing',
+        text_content: 'Sending high-resolution photos and video tour right away! 📸\n\nWould you like to schedule an exclusive private walkthrough this Sunday at 2:30 PM? We can arrange executive hospitality on site.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 124).toISOString()
+      },
+      {
+        id: 'msg-405',
+        direction: 'incoming',
+        text_content: 'Confirmed for Sunday 2:30 PM. Please send the GPS coordinates.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 111).toISOString()
+      },
+      {
+        id: 'msg-406',
+        direction: 'outgoing',
+        text_content: 'Confirmed Rajesh ji! Sunday 2:30 PM is booked exclusively for you. GPS pin and executive contact dispatched. See you on Sunday!',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 110).toISOString()
+      }
+    ]
+  },
+  {
+    id: 'conv-5',
+    whatsapp_phone: '+919930488211',
+    mode: 'human',
+    status: 'active',
+    last_message_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+    lead: DEMO_LEADS[4],
+    messages: [
+      {
+        id: 'msg-501',
+        direction: 'incoming',
+        text_content: 'Hi, we are looking for a 3BHK villa inside a gated community with clubhouse and security on Neral-Karjat Road.',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 240).toISOString()
+      },
+      {
+        id: 'msg-502',
+        direction: 'outgoing',
+        text_content: 'Namaskar Amit ji & Priya ji! 🙏\nWe have a brand new 3BHK Luxury Gated Pool Villa on Neral-Karjat Road:\n\n• Plot: 5,000 Sq.Ft. Sanctioned NA\n• Built-up: 2,600 Sq.Ft. (Furnished, private pool & deck)\n• Township Amenities: 25-Acre gated project, grand clubhouse, swimming pool, tennis court, 24x7 security & full rental management.\n• Price: ₹1.65 Cr\n\nWould you like to review the project brochure?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 239).toISOString()
+      },
+      {
+        id: 'msg-503',
+        direction: 'incoming',
+        text_content: 'Is bank loan available from SBI or HDFC for this township?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 185).toISOString()
+      },
+      {
+        id: 'msg-504',
+        direction: 'outgoing',
+        text_content: 'Yes Amit ji! The project is pre-approved by HDFC, SBI, and ICICI with up to 80% home loan funding. Clear title and RERA registered.\n\nWould you like to visit this Saturday to see the ready sample villa?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString()
+      }
+    ]
+  },
+  {
+    id: 'conv-6',
+    whatsapp_phone: '+919820011902',
+    mode: 'ai',
+    status: 'active',
+    last_message_at: new Date(Date.now() - 1000 * 60 * 220).toISOString(),
+    lead: DEMO_LEADS[5],
+    messages: [
+      {
+        id: 'msg-601',
+        direction: 'incoming',
+        text_content: 'Hello, tell me more about the 1.2 Acre farmhouse in Bhilavle. What is the water source?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 280).toISOString()
+      },
+      {
+        id: 'msg-602',
+        direction: 'outgoing',
+        text_content: 'Namaskar Sameer ji! 🙏\nThe Bhilavle 1.2 Acre Mango Orchard Farmhouse features:\n\n• Land Area: 1.2 Acre (48 Guntha / 52,272 Sq.Ft.)\n• Water Source: Private perennial well (Bawdi) with continuous natural spring + direct river touch on the rear boundary.\n• Plantation: 45 mature Alphonso mango trees yielding 200+ dozen mangoes annually, plus coconut and chikoo trees.\n• Bungalow: 3BHK stone finish villa with private plunge pool and caretaker quarters.\n• Price: ₹2.95 Cr\n\nCaretaker staff is already available on-site. Would you like to schedule a visit?',
+        status: 'read',
+        created_at: new Date(Date.now() - 1000 * 60 * 220).toISOString()
+      }
     ]
   }
 ];
@@ -353,11 +584,11 @@ export const DEMO_SITE_VISITS = [
     id: 'sv-1',
     lead_id: 'lead-1',
     property_id: 'prop-1',
-    scheduled_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + 'T11:00:00Z',
+    scheduled_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + 'T11:30:00Z',
     status: 'scheduled',
-    agent_notes: 'Buyer visiting from Bandra with wife & 2 kids. Interested in riverfront swimming pool.',
+    agent_notes: 'Confirmed by AI for Saturday 11:30 AM. Buyer driving from Bandra with family. Assigned to Mr. Sameer.',
     lead: { name: 'Rohit Mehta', phone: '+91 98201 44521' },
-    property: { name: 'Kashele Riverside 4BHK Luxury Villa' }
+    property: { name: 'Kashele Riverside 4BHK Luxury Pool Villa' }
   },
   {
     id: 'sv-2',
@@ -365,29 +596,29 @@ export const DEMO_SITE_VISITS = [
     property_id: 'prop-1',
     scheduled_date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0] + 'T14:30:00Z',
     status: 'scheduled',
-    agent_notes: 'High net-worth client from South Mumbai looking for immediate token closure.',
+    agent_notes: 'Confirmed by AI for Sunday 2:30 PM. High net-worth buyer from South Mumbai for 4BHK Kashele Villa.',
     lead: { name: 'Rajesh Singhania', phone: '+91 98190 77412' },
-    property: { name: 'Kashele Riverside 4BHK Luxury Villa' }
+    property: { name: 'Kashele Riverside 4BHK Luxury Pool Villa' }
   },
   {
     id: 'sv-3',
+    lead_id: 'lead-3',
+    property_id: 'prop-5',
+    scheduled_date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0] + 'T14:00:00Z',
+    status: 'scheduled',
+    agent_notes: 'Confirmed by AI for Sunday 2:00 PM. Pune investor inspecting 2.5 Acre Khandpe table-top land.',
+    lead: { name: 'Vikramaditya Deshmukh', phone: '+91 97654 32189' },
+    property: { name: 'Khandpe 2.5 Acres Agro-Tourism Land (100 Guntha)' }
+  },
+  {
+    id: 'sv-4',
     lead_id: 'lead-2',
     property_id: 'prop-2',
     scheduled_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + 'T16:00:00Z',
     status: 'requested',
-    agent_notes: '10 Guntha NA plot inspection with architect for farmhouse layout.',
+    agent_notes: '10 Guntha NA plot inspection in Kashele Valley requested by Dr. Sharma.',
     lead: { name: 'Dr. Ananya Sharma', phone: '+91 98212 99342' },
-    property: { name: 'Kashele Valley NA Plot (10 Guntha)' }
-  },
-  {
-    id: 'sv-4',
-    lead_id: 'lead-3',
-    property_id: 'prop-5',
-    scheduled_date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0] + 'T11:30:00Z',
-    status: 'completed',
-    agent_notes: 'Site visit completed. Client satisfied with road touch, moving to legal verification.',
-    lead: { name: 'Vikramaditya Deshmukh', phone: '+91 97654 32189' },
-    property: { name: 'Khandpe 2.5 Acres Agro-Tourism Land' }
+    property: { name: 'Kashele Valley Sanctioned NA Plot (10 Guntha)' }
   }
 ];
 

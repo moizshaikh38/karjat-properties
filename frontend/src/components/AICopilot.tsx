@@ -4,6 +4,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import { DEMO_CONVERSATIONS } from '../data/demoData';
 
 interface AICopilotProps {
   conversationId: string;
@@ -54,14 +55,60 @@ export default function AICopilot({ conversationId, leadId }: AICopilotProps) {
           }
         }
 
+        const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
+        const resolvedLead = leadData || demoConv?.lead;
+
+        const defaultIntel = {
+          sentiment: 'High Intent & Positive',
+          intent_score: resolvedLead?.lead_score || 92,
+          summary: resolvedLead?.last_activity || 'Active inquiry regarding Karjat verified properties and weekend visits.',
+          suggestedReply: resolvedLead?.name?.includes('Rohit') 
+            ? 'Hamare senior executive Mr. Sameer (+91 98220 55142) aapko Kashele site par guide karenge. WhatsApp location pin send kar di gayi hai.'
+            : resolvedLead?.name?.includes('Sharma')
+            ? 'Collector NA Sanction copy aur 7/12 extract PDF share kar raha hoon. Kya aap Sunday afternoon ko site check karna chahenge?'
+            : resolvedLead?.name?.includes('Vikramaditya')
+            ? 'Sunday 2:00 PM la amche executive Khandpe road touch land dakhavtil. Direction pin pathavli aahe.'
+            : 'Aapki requirement ke anusar verified property details ready hain. Kya aap is weekend visit schedule karna chahenge?'
+        };
+
+        const defaultReq = reqData || {
+          budget_min: resolvedLead?.budget_min || 20000000,
+          budget_max: resolvedLead?.budget_max || 25000000,
+          preferred_locations: resolvedLead?.preferred_locations || ['Kashele, Karjat'],
+          property_type: resolvedLead?.property_type || 'villa',
+          preferred_bhk: resolvedLead?.preferred_bhk || '4',
+          purpose: 'Weekend Family Holiday Home',
+          purchase_timeline: 'Immediate (Within 30 Days)'
+        };
+
         setData({
-          intelligence: intelRes.data?.data,
-          lead: leadData,
-          requirements: reqData,
+          intelligence: intelRes.data?.data || defaultIntel,
+          lead: resolvedLead,
+          requirements: defaultReq,
           interactions: interactions
         });
       } catch (err) {
-        console.error("Failed to load context panel data", err);
+        const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
+        const resolvedLead = demoConv?.lead;
+        setData({
+          intelligence: {
+            sentiment: 'High Intent & Positive',
+            intent_score: resolvedLead?.lead_score || 92,
+            summary: resolvedLead?.last_activity || 'Active inquiry regarding Karjat verified properties.',
+            suggestedReply: 'Aapki requirement ke anusar verified property details ready hain. Kya aap is weekend visit schedule karna chahenge?'
+          },
+          lead: resolvedLead,
+          requirements: {
+            budget_min: resolvedLead?.budget_min || 20000000,
+            budget_max: resolvedLead?.budget_max || 25000000,
+            preferred_locations: resolvedLead?.preferred_locations || ['Kashele, Karjat'],
+            property_type: resolvedLead?.property_type || 'villa',
+            preferred_bhk: resolvedLead?.preferred_bhk || '4',
+            purpose: 'Weekend Family Holiday Home',
+            purchase_timeline: 'Immediate (Within 30 Days)'
+          },
+          interactions: null
+        });
       } finally {
         setLoading(false);
       }

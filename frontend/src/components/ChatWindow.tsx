@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import AICopilot from './AICopilot';
+import { DEMO_CONVERSATIONS } from '../data/demoData';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -35,19 +36,26 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
         api.get(`/conversations/${conversationId}/messages`)
       ]);
       const convList = convRes.data?.data || [];
-      const conv = convList.find((c: any) => c.id === conversationId);
+      const conv = convList.find((c: any) => c.id === conversationId) || DEMO_CONVERSATIONS.find(c => c.id === conversationId);
       if (conv) setConversation(conv);
 
-      const newMsgs = msgsRes.data?.data || [];
+      const rawMsgs = msgsRes.data?.data || [];
+      const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
+      const newMsgs = rawMsgs.length > 0 ? rawMsgs : (demoConv?.messages || []);
+
       setMessages((prev) => {
         if (prev.length === newMsgs.length) {
           const isIdentical = prev.every((m, idx) => m.id === newMsgs[idx]?.id && m.status === newMsgs[idx]?.status);
           if (isIdentical) return prev;
         }
-        return newMsgs;
+        return newMsgs as any;
       });
     } catch (err) {
-      console.error(err);
+      const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
+      if (demoConv) {
+        setConversation(demoConv as any);
+        setMessages((demoConv.messages || []) as any);
+      }
     } finally {
       setLoading(false);
     }
