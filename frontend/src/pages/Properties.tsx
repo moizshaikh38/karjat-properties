@@ -33,7 +33,9 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Tag,
+  AlertTriangle
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -97,6 +99,13 @@ export default function Properties() {
   const [propertyToEdit, setPropertyToEdit] = useState<any | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete & status update states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'soft' | 'permanent'>('soft');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
 
   // Media upload & progress states
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -563,6 +572,73 @@ export default function Properties() {
     setFormData((prev) => ({ ...prev, images: prev.images.filter((img) => img !== url) }));
   };
 
+  // Quick status update for any property (Available, Sold, Reserved, Rented, Inactive)
+  const handleUpdateStatus = async (propertyId: string, newStatus: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      setIsUpdatingStatus(propertyId);
+      await api.patch(`/properties/${propertyId}/status`, { status: newStatus });
+      
+      const statusLabels: Record<string, string> = {
+        sold: 'Sold 🎉',
+        available: 'Available 🟢',
+        reserved: 'Reserved 🟡',
+        rented: 'Rented 🔵',
+        inactive: 'Inactive / Off-Market ⚪',
+      };
+      toast.success(`Property marked as ${statusLabels[newStatus] || newStatus}`);
+
+      setProperties((prev) =>
+        prev.map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
+      );
+
+      if (selectedProperty && selectedProperty.id === propertyId) {
+        setSelectedProperty((prev: any) => ({ ...prev, status: newStatus }));
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to update property status');
+    } finally {
+      setIsUpdatingStatus(null);
+    }
+  };
+
+  // Open delete confirmation modal
+  const handleOpenDelete = (prop: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setPropertyToDelete(prop);
+    setDeleteMode('soft');
+    setIsDeleteModalOpen(true);
+  };
+
+  // Execute property deletion (soft deactivate or permanent removal)
+  const handleConfirmDelete = async () => {
+    if (!propertyToDelete) return;
+    try {
+      setIsDeleting(true);
+      const isPermanent = deleteMode === 'permanent';
+      await api.delete(`/properties/${propertyToDelete.id}?permanent=${isPermanent}`);
+
+      toast.success(isPermanent ? 'Property permanently deleted' : 'Property deactivated (marked inactive)');
+
+      setProperties((prev) => prev.filter((p) => p.id !== propertyToDelete.id));
+
+      if (selectedProperty && selectedProperty.id === propertyToDelete.id) {
+        setSelectedProperty(null);
+      }
+      if (isEditModalOpen && formData.id === propertyToDelete.id) {
+        setIsEditModalOpen(false);
+      }
+
+      setIsDeleteModalOpen(false);
+      setPropertyToDelete(null);
+      fetchProperties();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error?.message || 'Failed to delete property');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const filteredProperties = properties
     .filter((p) => statusFilter === 'All' || p.status?.toLowerCase() === statusFilter.toLowerCase())
     .filter((p) => typeFilter === 'All' || p.property_type?.toLowerCase() === typeFilter.toLowerCase())
@@ -630,7 +706,7 @@ export default function Properties() {
         <div className="flex flex-wrap gap-2">
           {/* Status Filters */}
           <div className="flex gap-1 p-0.5 bg-[var(--color-surface-elevated)] rounded-[6px] border border-[var(--color-border)]">
-            {['All', 'Available', 'Reserved', 'Sold'].map((s) => (
+            {['All', 'Available', 'Reserved', 'Sold', 'Rented', 'Inactive'].map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -696,10 +772,29 @@ export default function Properties() {
                     alt={prop.title || prop.name}
                     className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                   />
-                  <div className="absolute top-2.5 right-2.5">
-                    <Badge variant={prop.status === 'available' ? 'success' : prop.status === 'reserved' ? 'warm' : 'cold'}>
-                      {prop.status || 'Available'}
-                    </Badge>
+                  <div className="absolute top-2.5 right-2.5" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={prop.status?.toLowerCase() || 'available'}
+                      onChange={(e) => handleUpdateStatus(prop.id, e.target.value, e as any)}
+                      disabled={isUpdatingStatus === prop.id}
+                      className={`text-[11px] font-medium rounded-[4px] px-2 py-0.5 border shadow-sm cursor-pointer focus:outline-none backdrop-blur-md transition-all ${
+                        prop.status === 'sold'
+                          ? 'bg-red-950/85 text-red-300 border-red-500/50'
+                          : prop.status === 'reserved'
+                          ? 'bg-amber-950/85 text-amber-300 border-amber-500/50'
+                          : prop.status === 'rented'
+                          ? 'bg-sky-950/85 text-sky-300 border-sky-500/50'
+                          : prop.status === 'inactive'
+                          ? 'bg-gray-900/85 text-gray-300 border-gray-500/50'
+                          : 'bg-emerald-950/85 text-emerald-300 border-emerald-500/50'
+                      }`}
+                    >
+                      <option value="available" className="bg-[#18181b] text-emerald-400">🟢 Available</option>
+                      <option value="sold" className="bg-[#18181b] text-red-400">🔴 Sold</option>
+                      <option value="reserved" className="bg-[#18181b] text-amber-400">🟡 Reserved</option>
+                      <option value="rented" className="bg-[#18181b] text-sky-400">🔵 Rented</option>
+                      <option value="inactive" className="bg-[#18181b] text-gray-400">⚪ Inactive</option>
+                    </select>
                   </div>
                 </div>
 
@@ -739,18 +834,50 @@ export default function Properties() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-[var(--color-accent)]" />
-                      <span>7/12 Clear Title</span>
-                    </span>
-                    <button
-                      onClick={(e) => handleOpenEdit(prop, e)}
-                      className="text-[11px] font-medium text-[var(--color-accent)] hover:underline flex items-center gap-1"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                      <span>Edit</span>
-                    </button>
+                  {/* Actions Bar */}
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]/60">
+                    {/* Quick status shortcut button */}
+                    {prop.status === 'sold' ? (
+                      <button
+                        type="button"
+                        onClick={(e) => handleUpdateStatus(prop.id, 'available', e)}
+                        className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+                        title="Re-list as available"
+                      >
+                        <span>🟢 Mark Available</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => handleUpdateStatus(prop.id, 'sold', e)}
+                        className="text-[11px] font-medium text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                        title="Mark as Sold"
+                      >
+                        <Tag className="w-3 h-3" />
+                        <span>Mark Sold</span>
+                      </button>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEdit(prop, e)}
+                        className="text-[11.5px] font-medium text-[var(--color-text)] hover:text-[var(--color-accent)] flex items-center gap-1 px-2 py-0.5 rounded hover:bg-[var(--color-surface-elevated)] transition-colors cursor-pointer"
+                        title="Edit Listing"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenDelete(prop, e)}
+                        className="text-[11.5px] font-medium text-red-400/80 hover:text-red-400 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
+                        title="Delete Property"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -801,18 +928,49 @@ export default function Properties() {
                     <td className="py-3 px-4 font-medium font-display text-[14px] text-[var(--color-text)] tabular-nums">
                       {formatPrice(prop.price)}
                     </td>
-                    <td className="py-3 px-4">
-                      <Badge variant={prop.status === 'available' ? 'success' : prop.status === 'reserved' ? 'warm' : 'cold'}>
-                        {prop.status || 'Available'}
-                      </Badge>
+                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={prop.status?.toLowerCase() || 'available'}
+                        onChange={(e) => handleUpdateStatus(prop.id, e.target.value, e as any)}
+                        disabled={isUpdatingStatus === prop.id}
+                        className={`text-[11.5px] font-medium rounded-[4px] px-2.5 py-1 border cursor-pointer focus:outline-none transition-all ${
+                          prop.status === 'sold'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/30'
+                            : prop.status === 'reserved'
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            : prop.status === 'rented'
+                            ? 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+                            : prop.status === 'inactive'
+                            ? 'bg-gray-500/10 text-gray-400 border-gray-500/30'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        }`}
+                      >
+                        <option value="available" className="bg-[#18181b] text-emerald-400">Available 🟢</option>
+                        <option value="sold" className="bg-[#18181b] text-red-400">Mark as Sold 🔴</option>
+                        <option value="reserved" className="bg-[#18181b] text-amber-400">Reserved 🟡</option>
+                        <option value="rented" className="bg-[#18181b] text-sky-400">Rented 🔵</option>
+                        <option value="inactive" className="bg-[#18181b] text-gray-400">Inactive ⚪</option>
+                      </select>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={(e) => handleOpenEdit(prop, e)}
-                        className="text-[12px] font-medium text-[var(--color-accent)] hover:underline"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEdit(prop, e)}
+                          className="text-[12px] font-medium text-[var(--color-text)] hover:text-[var(--color-accent)] px-2 py-1 rounded hover:bg-[var(--color-surface-elevated)] transition-colors cursor-pointer"
+                          title="Edit Listing"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenDelete(prop, e)}
+                          className="text-[12px] font-medium text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
+                          title="Delete Property"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -859,6 +1017,44 @@ export default function Properties() {
               </div>
             </div>
 
+            {/* Quick Listing Status Management Controller */}
+            <div className="p-3 bg-[var(--color-surface-elevated)]/50 rounded-[6px] border border-[var(--color-border)] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                  Update Listing Status
+                </span>
+                <span className="text-[11px] font-medium text-[var(--color-text)] capitalize">
+                  Current: <strong className="font-semibold">{selectedProperty.status || 'Available'}</strong>
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'available', label: 'Available 🟢', activeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+                  { id: 'sold', label: 'Mark as Sold 🔴', activeBg: 'bg-red-500/20 text-red-300 border-red-500/40' },
+                  { id: 'reserved', label: 'Reserved / Under Offer 🟡', activeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+                  { id: 'rented', label: 'Rented 🔵', activeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/40' },
+                  { id: 'inactive', label: 'Inactive / Off-Market ⚪', activeBg: 'bg-gray-500/20 text-gray-300 border-gray-500/40' },
+                ].map((btn) => {
+                  const isActive = (selectedProperty.status || 'available').toLowerCase() === btn.id;
+                  return (
+                    <button
+                      key={btn.id}
+                      type="button"
+                      onClick={() => handleUpdateStatus(selectedProperty.id, btn.id)}
+                      disabled={isUpdatingStatus === selectedProperty.id}
+                      className={`px-2.5 py-1 text-[11.5px] rounded-[4px] border font-medium transition-all cursor-pointer ${
+                        isActive
+                          ? `${btn.activeBg} shadow-xs font-semibold`
+                          : 'bg-[var(--color-surface)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:text-[var(--color-text)] hover:border-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      {isActive ? '✓ ' : ''}{btn.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Key Measurements (Acre / Guntha / SqFt) */}
             <div className="grid grid-cols-3 gap-3 p-3 border border-[var(--color-border)] rounded-[6px]">
               <div>
@@ -896,26 +1092,42 @@ export default function Properties() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
               <Button
-                variant="outline"
+                variant="danger"
                 size="sm"
                 onClick={() => {
+                  const toDel = selectedProperty;
                   setSelectedProperty(null);
-                  handleOpenEdit(selectedProperty);
+                  handleOpenDelete(toDel);
                 }}
-                leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
               >
-                Edit Listing
+                Delete Listing
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => navigate('/site-visits')}
-                leftIcon={<Calendar className="w-3.5 h-3.5" />}
-              >
-                Schedule Site Visit
-              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const toEdit = selectedProperty;
+                    setSelectedProperty(null);
+                    handleOpenEdit(toEdit);
+                  }}
+                  leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+                >
+                  Edit Listing
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/site-visits')}
+                  leftIcon={<Calendar className="w-3.5 h-3.5" />}
+                >
+                  Schedule Site Visit
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>
@@ -974,7 +1186,7 @@ export default function Properties() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Total Price (INR) *</label>
                 <input
@@ -997,6 +1209,21 @@ export default function Properties() {
                   {KARJAT_LOCATIONS.map((loc) => (
                     <option key={loc} value={loc}>{loc}</option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-[var(--color-text-muted)] mb-1">Listing Status</label>
+                <select
+                  value={formData.status?.toLowerCase() || 'available'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px] px-3 py-1.5 text-[13px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] cursor-pointer"
+                >
+                  <option value="available">Available 🟢</option>
+                  <option value="sold">Sold (Mark as Sold) 🔴</option>
+                  <option value="reserved">Reserved / Under Offer 🟡</option>
+                  <option value="rented">Rented 🔵</option>
+                  <option value="inactive">Inactive / Off-Market ⚪</option>
                 </select>
               </div>
             </div>
@@ -1547,24 +1774,152 @@ export default function Properties() {
           </div>
 
           {/* SUBMIT BUTTONS */}
+          <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
+            {isEditModalOpen ? (
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  const toDel = propertyToEdit || formData;
+                  setIsEditModalOpen(false);
+                  handleOpenDelete(toDel);
+                }}
+                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+              >
+                Delete Property
+              </Button>
+            ) : <div />}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setIsEditModalOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
+                {isEditModalOpen ? 'Save Property Changes' : 'Publish to Verified Inventory'}
+              </Button>
+            </div>
+          </div>
+
+        </form>
+      </Modal>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setIsDeleteModalOpen(false);
+            setPropertyToDelete(null);
+          }
+        }}
+        title="Delete Property Listing"
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-[13px]">
+          <div className="flex items-start gap-3 p-3.5 bg-red-500/10 border border-red-500/25 rounded-[6px]">
+            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-semibold text-red-200 block text-[13.5px]">
+                Confirm Property Removal
+              </span>
+              <p className="text-[12px] text-red-200/80 leading-relaxed">
+                You are about to remove <strong className="text-white font-medium">{propertyToDelete?.title || propertyToDelete?.name || 'this property'}</strong> {propertyToDelete?.price ? `(${formatPrice(propertyToDelete?.price)})` : ''}.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <span className="text-[11.5px] font-medium text-[var(--color-text-muted)] block uppercase tracking-wider">
+              Choose Deletion Method:
+            </span>
+
+            {/* Option 1: Deactivate (Soft Delete) */}
+            <div 
+              onClick={() => setDeleteMode('soft')}
+              className={`flex items-start gap-3 p-3 rounded-[6px] border cursor-pointer transition-all ${
+                deleteMode === 'soft' 
+                  ? 'bg-[var(--color-surface-elevated)] border-[var(--color-accent)] ring-1 ring-[var(--color-accent)]' 
+                  : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:bg-[var(--color-surface-elevated)]/50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="deleteMode"
+                checked={deleteMode === 'soft'}
+                onChange={() => setDeleteMode('soft')}
+                className="mt-1 text-[var(--color-accent)] cursor-pointer"
+              />
+              <div className="space-y-0.5">
+                <span className="font-medium text-[var(--color-text)] block text-[13px]">
+                  Deactivate Listing (Soft Delete - Recommended)
+                </span>
+                <p className="text-[11.5px] text-[var(--color-text-muted)] leading-relaxed">
+                  Sets status to <strong>Inactive</strong>. Hides the property from AI property matching, customer WhatsApp recommendations, and search results, while preserving lead history.
+                </p>
+              </div>
+            </div>
+
+            {/* Option 2: Permanent Deletion */}
+            <div 
+              onClick={() => setDeleteMode('permanent')}
+              className={`flex items-start gap-3 p-3 rounded-[6px] border cursor-pointer transition-all ${
+                deleteMode === 'permanent' 
+                  ? 'bg-red-500/10 border-red-500/50 ring-1 ring-red-500/50' 
+                  : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:bg-[var(--color-surface-elevated)]/50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="deleteMode"
+                checked={deleteMode === 'permanent'}
+                onChange={() => setDeleteMode('permanent')}
+                className="mt-1 text-red-500 cursor-pointer"
+              />
+              <div className="space-y-0.5">
+                <span className="font-medium text-red-400 block text-[13px]">
+                  Permanent Deletion from Database
+                </span>
+                <p className="text-[11.5px] text-[var(--color-text-muted)] leading-relaxed">
+                  Permanently purges this property record and all its data from PostgreSQL. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
             <Button
               type="button"
               variant="outline"
               size="sm"
+              disabled={isDeleting}
               onClick={() => {
-                setIsAddModalOpen(false);
-                setIsEditModalOpen(false);
+                setIsDeleteModalOpen(false);
+                setPropertyToDelete(null);
               }}
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" isLoading={isSubmitting}>
-              {isEditModalOpen ? 'Save Property Changes' : 'Publish to Verified Inventory'}
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              isLoading={isDeleting}
+              onClick={handleConfirmDelete}
+              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              {deleteMode === 'permanent' ? 'Permanently Delete' : 'Deactivate Listing'}
             </Button>
           </div>
-
-        </form>
+        </div>
       </Modal>
 
     </div>

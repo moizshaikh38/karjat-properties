@@ -93,15 +93,20 @@ export const updateProperty = async (id: string, input: UpdatePropertyInput): Pr
 // Delete (soft) Property
 // ==========================================
 
-export const deleteProperty = async (id: string): Promise<void> => {
+export const deleteProperty = async (id: string, permanent: boolean = false): Promise<void> => {
   const existing = await propertyRepo.getPropertyById(id);
   if (!existing) {
     throw new NotFoundError('Property not found');
   }
 
-  // Soft delete: set status to inactive
-  await propertyRepo.updatePropertyStatus(id, 'inactive');
-  logger.info({ propertyId: id }, 'Property deactivated');
+  if (permanent) {
+    await propertyRepo.deleteProperty(id);
+    logger.info({ propertyId: id }, 'Property permanently deleted from database');
+  } else {
+    // Soft delete: set status to inactive
+    await propertyRepo.updatePropertyStatus(id, 'inactive');
+    logger.info({ propertyId: id }, 'Property deactivated');
+  }
 };
 
 // ==========================================

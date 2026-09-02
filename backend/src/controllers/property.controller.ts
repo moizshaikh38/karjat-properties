@@ -146,11 +146,12 @@ export const updateProperty = async (req: Request, res: Response, next: NextFunc
 // ==========================================
 export const deleteProperty = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await propertyService.deleteProperty(param(req, 'id'));
+    const permanent = req.query.permanent === 'true';
+    await propertyService.deleteProperty(param(req, 'id'), permanent);
 
     const response: ApiSuccessResponse = {
       success: true,
-      data: { message: 'Property deactivated successfully' },
+      data: { message: permanent ? 'Property permanently deleted' : 'Property deactivated successfully' },
     };
     res.status(200).json(response);
   } catch (error) {
