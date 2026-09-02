@@ -190,12 +190,12 @@ describe('AI Sales Agent Engine (Step 18)', () => {
         requirements: { max_budget: 8000000, min_bhk: 3 },
       });
 
-      expect(prompt).toContain('PROMPT VERSION: v1.0');
       expect(prompt).toContain('Karjat Properties');
       expect(prompt).toContain('Amit Sharma');
-      expect(prompt).toContain('DISCOVERY DISCIPLINE');
-      expect(prompt).toContain('STRICT ACCURACY & ANTI-HALLUCINATION');
-      expect(prompt).toContain('PROMPT INJECTION & SECURITY DEFENSES');
+      expect(prompt).toContain('CUSTOMER REQUIREMENT DISCOVERY');
+      expect(prompt).toContain('PROPERTY SEARCH — MANDATORY');
+      expect(prompt).toContain('PROMPT INJECTION DEFENSE');
+      expect(prompt).toContain('ABSOLUTE RULES');
     });
   });
 
