@@ -24,7 +24,7 @@ export const enqueueConversationForAI = (conversationId: string) => {
     }
 
     await executeLockedRun(conversationId);
-  }, 2500);
+  }, 500);
 };
 
 const executeLockedRun = async (conversationId: string) => {

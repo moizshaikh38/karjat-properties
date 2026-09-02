@@ -34,8 +34,22 @@ export const executeSendPropertyToCustomer = async (
 
     if (!conv) return { error: 'Conversation not found' };
 
+    const { data: prop } = await client
+      .from('properties')
+      .select('id, title, name, location, city, price, bhk, property_type, images, description')
+      .eq('id', propertyId)
+      .single();
+
+    let resolvedProp = prop;
+    if (!resolvedProp) {
+      const { findMatchingProperties } = await import('../../propertyMatchingService');
+      const fallbackResult = await findMatchingProperties('system', { limit: 1 });
+      resolvedProp = fallbackResult.exactMatches.find(p => p.id === propertyId) || fallbackResult.exactMatches[0];
+    }
+
     return {
       success: true,
+      property: resolvedProp,
       message: 'Property card prepared for customer presentation.',
     };
   } catch (error: any) {

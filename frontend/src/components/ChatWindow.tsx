@@ -9,17 +9,31 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import AICopilot from './AICopilot';
 import { DEMO_CONVERSATIONS } from '../data/demoData';
+import {
+  getCachedMessages,
+  setCachedMessages,
+  getCachedConversation,
+  setCachedConversation,
+  updateCachedConversationMode,
+  fetchConversationMessages,
+} from '../services/conversationCache';
 
 interface ChatWindowProps {
   conversationId: string;
+  initialConversation?: Conversation | null;
   onModeChange?: () => void;
 }
 
-export default function ChatWindow({ conversationId, onModeChange }: ChatWindowProps) {
+export default function ChatWindow({ conversationId, initialConversation, onModeChange }: ChatWindowProps) {
   const navigate = useNavigate();
-  const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Initialize immediately from cache or initialConversation for <50ms instant response
+  const cachedConv = (initialConversation || getCachedConversation(conversationId) || DEMO_CONVERSATIONS.find(c => c.id === conversationId) || null) as Conversation | null;
+  const cachedMsgs = getCachedMessages(conversationId);
+
+  const [conversation, setConversation] = useState<Conversation | null>(() => cachedConv);
+  const [messages, setMessages] = useState<Message[]>(() => cachedMsgs || []);
+  const [loading, setLoading] = useState<boolean>(() => !cachedMsgs && !cachedConv);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [mobileCopilotOpen, setMobileCopilotOpen] = useState(false);
@@ -29,53 +43,112 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchData = async () => {
-    try {
-      const [convRes, msgsRes] = await Promise.all([
-        api.get(`/conversations`).catch(() => ({ data: { data: [] } })),
-        api.get(`/conversations/${conversationId}/messages`).catch(() => ({ data: { data: [] } }))
-      ]);
-      const convList = convRes.data?.data || [];
-      let conv = convList.find((c: any) => c.id === conversationId);
-      if (!conv) {
-        conv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
-      }
-      if (conv) setConversation(conv);
+  const activeConvIdRef = useRef<string>(conversationId);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-      const rawMsgs = msgsRes.data?.data || [];
-      const isDemo = String(conversationId).startsWith('conv-');
-      const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
-      
-      const newMsgs = (rawMsgs.length > 0 || !isDemo)
-        ? rawMsgs
-        : (demoConv?.messages || []);
+  // Synchronize active conversation ID ref
+  activeConvIdRef.current = conversationId;
 
-      setMessages((prev) => {
-        if (prev.length === newMsgs.length) {
-          const isIdentical = prev.every((m, idx) => m.id === newMsgs[idx]?.id && m.status === newMsgs[idx]?.status && m.text_content === newMsgs[idx]?.text_content);
-          if (isIdentical) return prev;
-        }
-        return newMsgs as any;
-      });
-    } catch (err) {
-      const demoConv = DEMO_CONVERSATIONS.find(c => c.id === conversationId);
-      if (demoConv) {
-        setConversation(demoConv as any);
-        setMessages((demoConv.messages || []) as any);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Instant switch effect: updates UI immediately from cache, aborts previous requests
   useEffect(() => {
-    setLoading(true);
+    const switchStart = performance.now();
+    console.log(`[PERF] CHAT_SWITCH_START conversationId=${conversationId}`);
+
+    // 1. Cancel previous in-flight HTTP request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 2. Instant local lookup
+    const resolvedConv = (initialConversation || getCachedConversation(conversationId) || DEMO_CONVERSATIONS.find(c => c.id === conversationId) || null) as Conversation | null;
+    const currentCachedMsgs = getCachedMessages(conversationId);
+
+    if (resolvedConv) {
+      setConversation(resolvedConv);
+      setCachedConversation(resolvedConv);
+    }
+
+    if (currentCachedMsgs && currentCachedMsgs.length > 0) {
+      setMessages(currentCachedMsgs);
+      setLoading(false);
+      console.log(`[PERF] CHAT_SWITCH_STATE_UPDATED (from cache) duration=${(performance.now() - switchStart).toFixed(1)}ms`);
+    } else {
+      // Clear previous conversation messages to prevent cross-conversation leak
+      setMessages([]);
+      setLoading(true);
+      console.log(`[PERF] CHAT_SWITCH_STATE_UPDATED (uncached, showing skeleton) duration=${(performance.now() - switchStart).toFixed(1)}ms`);
+    }
+
     isInitialLoadRef.current = true;
     prevMsgCountRef.current = 0;
-    fetchData();
-    const interval = setInterval(fetchData, 2000);
-    return () => clearInterval(interval);
-  }, [conversationId]);
+
+    // 3. Background fetch for fresh messages (avoids fetching redundant full /conversations list)
+    const loadMessages = async () => {
+      try {
+        console.log(`[PERF] CHAT_FETCH_START conversationId=${conversationId}`);
+        const fresh = await fetchConversationMessages(conversationId, controller.signal);
+        
+        // Guard against race conditions: only update if this is still the active conversation
+        if (activeConvIdRef.current === conversationId) {
+          setMessages((prev) => {
+            if (prev.length === fresh.length) {
+              const isIdentical = prev.every((m, idx) => 
+                m.id === fresh[idx]?.id && 
+                m.status === fresh[idx]?.status && 
+                m.text_content === fresh[idx]?.text_content &&
+                m.media_url === fresh[idx]?.media_url
+              );
+              if (isIdentical) return prev;
+            }
+            return fresh;
+          });
+          setLoading(false);
+          console.log(`[PERF] CHAT_FETCH_END conversationId=${conversationId} duration=${(performance.now() - switchStart).toFixed(1)}ms count=${fresh.length}`);
+        }
+      } catch (err: any) {
+        if (err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED') {
+          // Request was aborted due to quick conversation switch - cleanly ignore
+          return;
+        }
+        if (activeConvIdRef.current === conversationId) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadMessages();
+
+    // 4. Lightweight background polling (only polls this conversation's messages, NOT full list)
+    const interval = setInterval(() => {
+      if (activeConvIdRef.current === conversationId) {
+        fetchConversationMessages(conversationId)
+          .then((fresh) => {
+            if (activeConvIdRef.current === conversationId) {
+              setMessages((prev) => {
+                if (prev.length === fresh.length) {
+                  const isIdentical = prev.every((m, idx) => 
+                    m.id === fresh[idx]?.id && 
+                    m.status === fresh[idx]?.status && 
+                    m.text_content === fresh[idx]?.text_content &&
+                    m.media_url === fresh[idx]?.media_url
+                  );
+                  if (isIdentical) return prev;
+                }
+                return fresh;
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    }, 2500);
+
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
+  }, [conversationId, initialConversation]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -101,13 +174,21 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
   }, [messages]);
 
   const handleModeChange = async (action: 'takeover' | 'release-to-ai' | 'pause') => {
+    const targetMode: 'ai' | 'human' | 'paused' = 
+      action === 'takeover' ? 'human' : action === 'release-to-ai' ? 'ai' : 'paused';
+    
+    // Optimistic UI update for immediate response
+    setConversation((prev) => (prev ? { ...prev, mode: targetMode } : null));
+    updateCachedConversationMode(conversationId, targetMode);
+
     try {
       await api.post(`/conversations/${conversationId}/${action}`);
       toast.success(`Mode updated to ${action.replace('-', ' ')}`);
-      fetchData();
       if (onModeChange) onModeChange();
     } catch (err) {
       toast.error('Failed to change mode');
+      // Revert if failed
+      if (initialConversation) setConversation(initialConversation);
     }
   };
 
@@ -115,22 +196,30 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
     
+    const textToSend = inputText.trim();
+    setInputText('');
+
     try {
       setSending(true);
-      await api.post(`/conversations/${conversationId}/messages`, { type: 'text', text: inputText.trim() });
-      setInputText('');
-      fetchData();
+      await api.post(`/conversations/${conversationId}/messages`, { type: 'text', text: textToSend });
+      // Refresh messages
+      const updated = await fetchConversationMessages(conversationId);
+      if (activeConvIdRef.current === conversationId) {
+        setMessages(updated);
+      }
     } catch (err) {
       toast.error('Failed to send message');
+      setInputText(textToSend);
     } finally {
       setSending(false);
     }
   };
 
-  if (loading && !conversation) {
+  if (!conversation && loading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-bg)]">
-        <span className="text-[12px]">Loading WhatsApp messages...</span>
+      <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-bg)] gap-2">
+        <div className="w-5 h-5 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin" />
+        <span className="text-[12px]">Loading chat...</span>
       </div>
     );
   }
@@ -223,7 +312,19 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
         ref={containerRef} 
         className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-[var(--color-bg)] hide-scrollbar"
       >
-        {messages.length === 0 ? (
+        {loading && messages.length === 0 ? (
+          <div className="p-4 space-y-3.5 animate-pulse">
+            <div className="flex justify-start">
+              <div className="w-52 h-11 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px]" />
+            </div>
+            <div className="flex justify-end">
+              <div className="w-64 h-14 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-[6px]" />
+            </div>
+            <div className="flex justify-start">
+              <div className="w-72 h-16 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px]" />
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="text-center text-[12px] text-[var(--color-text-muted)] py-12">
             No messages recorded in this conversation yet.
           </div>
@@ -239,9 +340,21 @@ export default function ChatWindow({ conversationId, onModeChange }: ChatWindowP
                       : 'bg-[var(--color-surface)] text-[var(--color-text)] rounded-[6px] rounded-tl-[2px] border border-[var(--color-border)]'
                   }`}
                 >
-                  <div className="break-words whitespace-pre-wrap">
-                    {msg.text_content}
-                  </div>
+                  {msg.media_url && (
+                    <div className="mb-2 rounded-[4px] overflow-hidden max-w-sm">
+                      <img 
+                        src={msg.media_url} 
+                        alt="Property photograph" 
+                        className="w-full h-auto max-h-56 object-cover rounded-[4px] cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => window.open(msg.media_url, '_blank')}
+                      />
+                    </div>
+                  )}
+                  {msg.text_content && (
+                    <div className="break-words whitespace-pre-wrap">
+                      {msg.text_content}
+                    </div>
+                  )}
                   <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 font-mono tabular-nums ${
                     isOutgoing ? 'text-teal-100/70' : 'text-[var(--color-text-muted)]'
                   }`}>

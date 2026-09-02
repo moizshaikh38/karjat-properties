@@ -9,6 +9,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '../components/ui/Badge';
 import { DEMO_CONVERSATIONS } from '../data/demoData';
 
+import { setCachedConversation, prefetchConversations } from '../services/conversationCache';
+
 export default function Inbox() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,14 +49,19 @@ export default function Inbox() {
       // Combined list: Live real customer chats + curated demo showcase chats
       const allMerged = [...realDbList, ...cleanDemo];
       setConversations(allMerged as any);
+
+      // Populate local conversation cache and prefetch top 5 active conversations in background
+      allMerged.forEach((c) => setCachedConversation(c as any));
+      prefetchConversations(allMerged.slice(0, 5).map((c) => c.id));
     } catch (err) {
       setConversations(DEMO_CONVERSATIONS as any);
+      DEMO_CONVERSATIONS.forEach((c) => setCachedConversation(c as any));
     }
   };
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 2000);
+    const interval = setInterval(fetchConversations, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -73,6 +80,7 @@ export default function Inbox() {
   const isMobile = window.innerWidth < 768;
   const isConversationSelected = location.pathname.includes('/inbox/');
   const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? '');
+  const activeConv = filteredConversations.find(c => c.id === currentConvId) || conversations.find(c => c.id === currentConvId) || null;
 
   // If no conversation in URL and we have conversations, navigate to first
   useEffect(() => {
@@ -149,7 +157,10 @@ export default function Inbox() {
               return (
                 <div 
                   key={conv.id}
-                  onClick={() => navigate(`/inbox/${conv.id}`)}
+                  onClick={() => {
+                    console.log(`[PERF] CHAT_SWITCH_CLICK conversationId=${conv.id}`);
+                    navigate(`/inbox/${conv.id}`);
+                  }}
                   className={`p-3 cursor-pointer transition-colors ${
                     isSelected 
                       ? 'bg-[var(--color-surface-elevated)] border-l-2 border-l-[var(--color-accent)]' 
@@ -203,10 +214,14 @@ export default function Inbox() {
         {currentConvId ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 h-full overflow-hidden">
-              <ChatWindow conversationId={currentConvId} onModeChange={fetchConversations} />
+              <ChatWindow 
+                conversationId={currentConvId} 
+                initialConversation={activeConv} 
+                onModeChange={fetchConversations} 
+              />
             </div>
             <div className="hidden xl:block w-80 flex-shrink-0 border-l border-[var(--color-border)] bg-[var(--color-surface)] h-full overflow-y-auto hide-scrollbar">
-              <AICopilot conversationId={currentConvId} />
+              <AICopilot conversationId={currentConvId} leadId={activeConv?.lead?.id} />
             </div>
           </div>
         ) : (

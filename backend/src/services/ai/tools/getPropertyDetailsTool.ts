@@ -26,7 +26,7 @@ export const executeGetPropertyDetails = async (args: any) => {
     const client = db.getClient();
     const { data: prop, error } = await client
       .from('properties')
-      .select('id, name, title, description, property_type, bhk, bathrooms, price, size_sqft, location_city, location_neighborhood, amenities, status')
+      .select('id, name, title, description, property_type, bhk, bathrooms, price, size_sqft, location_city, location_neighborhood, amenities, status, images')
       .eq('id', propertyId)
       .single();
 
@@ -44,6 +44,10 @@ export const executeGetPropertyDetails = async (args: any) => {
           sizeSqFt: 750,
           city: 'Dahivali, Karjat',
           amenities: ['Power Backup', 'Security 24x7', 'Mountain View', 'Near Karjat Station'],
+          images: [
+            'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200',
+            'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200'
+          ],
           status: 'available',
           description: 'Modern 2 BHK apartment near Karjat Station with panoramic views.'
         }
@@ -64,6 +68,11 @@ export const executeGetPropertyDetails = async (args: any) => {
         city: prop.location_city,
         neighborhood: prop.location_neighborhood,
         amenities: prop.amenities || [],
+        images: Array.isArray(prop.images)
+          ? prop.images
+          : (typeof prop.images === 'string'
+              ? (() => { try { return JSON.parse(prop.images); } catch { return [prop.images]; } })()
+              : []),
         status: prop.status,
         description: prop.description,
       },

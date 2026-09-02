@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { DEMO_CONVERSATIONS } from '../data/demoData';
+import { getCachedConversation } from '../services/conversationCache';
 
 interface AICopilotProps {
   conversationId: string;
@@ -41,7 +42,7 @@ export default function AICopilot({ conversationId, leadId }: AICopilotProps) {
           reqData = r.data?.data;
           interactions = i.data?.data;
         } else {
-          const conv = await api.get(`/conversations`).then(res => res.data?.data?.find((c:any) => c.id === conversationId)).catch(() => null);
+          const conv = getCachedConversation(conversationId) || await api.get(`/conversations`).then(res => res.data?.data?.find((c:any) => c.id === conversationId)).catch(() => null);
           if (conv?.lead?.id) {
             const lId = conv.lead.id;
             const [l, r, i] = await Promise.all([

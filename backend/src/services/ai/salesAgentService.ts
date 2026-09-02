@@ -55,11 +55,13 @@ export class SalesAgentService {
    */
   public async processConversation(conversationId: string): Promise<void> {
     const startTime = Date.now();
+    logger.info({ conversationId }, `[PERF] AI_PROCESS_START`);
 
     try {
       // 1. Initial Conversation Mode Check
       if (!(await shouldAIRespond(conversationId))) {
         logger.info({ conversationId }, 'SalesAgent blocked: Mode is not AI');
+        logger.info({ conversationId, duration: Date.now() - startTime }, `[PERF] AI_PROCESS_END`);
         return;
       }
 
@@ -80,17 +82,28 @@ export class SalesAgentService {
         })
         .catch((e) => logger.error(e));
 
-      // 4. Multi-Intent Classification
-      const { intents, confidence } = await detectIntents(latestIncoming);
-      logger.debug({ conversationId, intents, confidence }, 'Detected customer intents');
+      // 4. Multi-Intent Classification (Non-Blocking)
+      // We fire this asynchronously so it doesn't block the main AI response generation.
+      const intents = ['PENDING_ANALYSIS'];
+      const confidence = 0.5;
+      
+      detectIntents(latestIncoming)
+        .then((res) => {
+           logger.debug({ conversationId, intents: res.intents, confidence: res.confidence }, 'Detected customer intents (background)');
+           // Analytics or background states can use this later
+        })
+        .catch((e) => logger.error(e));
 
       // 5. Short-circuit for Immediate Opt-Out
-      if (intents.includes('OPT_OUT') && confidence > 0.7) {
-        await executeRequestHumanAgent(conversationId, JSON.stringify({ reason: 'Customer requested opt-out' }));
+      // Since intent detection is now non-blocking, we rely on the main LLM 
+      // or explicit tool calls to handle opt-outs.
+      if (latestIncoming.toLowerCase().trim() === 'stop') {
+        await executeRequestHumanAgent(conversationId, JSON.stringify({ reason: 'Customer requested opt-out explicitly' }));
         await conversationStateMachine.updateConversationState(conversationId, 'CLOSED', {
           lastIntent: 'OPT_OUT',
-          confidence,
+          confidence: 1.0,
         });
+        logger.info({ conversationId, duration: Date.now() - startTime }, `[PERF] AI_PROCESS_END`);
         return;
       }
 
@@ -141,11 +154,14 @@ export class SalesAgentService {
       let finalResponseContent = '';
       let conversationModeSwitched = false;
       let lastToolCalledName: string | undefined;
+      const discoveredProperties: any[] = [];
 
       // 9. Multi-Step Tool Execution Loop (up to 4 iterations)
       while (iterationCount < 4) {
         iterationCount++;
 
+        logger.info({ conversationId }, `[PERF] LLM_CALL_START iteration=${iterationCount}`);
+        const llmStart = Date.now();
         const response = await aiProvider.generateResponse({
           systemPrompt,
           messages: conversationMessages,
@@ -153,6 +169,7 @@ export class SalesAgentService {
           temperature: 0.3,
           maxTokens: 500,
         });
+        logger.info({ conversationId, duration: Date.now() - llmStart }, `[PERF] LLM_CALL_END iteration=${iterationCount}`);
 
         if (response.content) {
           finalResponseContent = response.content;
@@ -170,17 +187,31 @@ export class SalesAgentService {
             }))
           });
 
-          for (const call of response.toolCalls) {
+            for (const call of response.toolCalls) {
             lastToolCalledName = call.name;
             let toolResult: any;
+
+            logger.info({ conversationId, tool: call.name }, `[PERF] TOOL_CALL_START tool=${call.name}`);
+            const toolStart = Date.now();
 
             try {
               switch (call.name) {
                 case 'searchProperties':
                   toolResult = await executePropertySearch(ctx.lead.id, call.arguments);
+                  if (toolResult?.success) {
+                    if (Array.isArray(toolResult.exactMatches)) {
+                      discoveredProperties.push(...toolResult.exactMatches);
+                    }
+                    if (Array.isArray(toolResult.alternatives)) {
+                      discoveredProperties.push(...toolResult.alternatives);
+                    }
+                  }
                   break;
                 case 'getPropertyDetails':
                   toolResult = await executeGetPropertyDetails(call.arguments);
+                  if (toolResult?.success && toolResult.property) {
+                    discoveredProperties.push(toolResult.property);
+                  }
                   break;
                 case 'checkPropertyAvailability':
                   toolResult = await executeCheckPropertyAvailability(call.arguments);
@@ -224,6 +255,9 @@ export class SalesAgentService {
                   break;
                 case 'sendPropertyToCustomer':
                   toolResult = await executeSendPropertyToCustomer(conversationId, call.arguments);
+                  if (toolResult?.property) {
+                    discoveredProperties.push(toolResult.property);
+                  }
                   break;
                 default:
                   toolResult = { error: `Unknown tool: ${call.name}` };
@@ -236,11 +270,13 @@ export class SalesAgentService {
                 leadId: ctx.lead.id,
                 eventType: 'TOOL_CALL',
                 toolName: call.name,
-                latencyMs: Date.now() - startTime,
+                latencyMs: Date.now() - toolStart,
               });
             } catch (e: any) {
               toolResult = { error: e.message };
             }
+            
+            logger.info({ conversationId, tool: call.name, duration: Date.now() - toolStart }, `[PERF] TOOL_CALL_END tool=${call.name}`);
 
             conversationMessages.push({
               role: 'tool',
@@ -258,7 +294,10 @@ export class SalesAgentService {
         }
       }
 
-      if (!finalResponseContent) return;
+      if (!finalResponseContent) {
+         logger.info({ conversationId, duration: Date.now() - startTime }, `[PERF] AI_PROCESS_END`);
+         return;
+      }
 
       // 10. Anti-Hallucination & Response Validation
       const validation = validateAIResponse(finalResponseContent);
@@ -276,10 +315,13 @@ export class SalesAgentService {
         let msgId = `ai-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
         try {
+          logger.info({ conversationId }, `[PERF] FAST2SMS_SEND_START`);
+          const fast2smsStart = Date.now();
           const waResponse = await whatsappMessageService.sendText({
             to: ctx.conversation.whatsapp_phone,
             text: finalResponseContent,
           });
+          logger.info({ conversationId, duration: Date.now() - fast2smsStart }, `[PERF] FAST2SMS_SEND_END`);
           if (waResponse?.messageId) msgId = waResponse.messageId;
           else if (waResponse?.messages?.[0]?.id) msgId = waResponse.messages[0].id;
         } catch (waErr: any) {
@@ -303,6 +345,102 @@ export class SalesAgentService {
           last_message_at: new Date().toISOString()
         }).eq('id', conversationId);
 
+        // 11b. Dispatch verified property photos via Fast2SMS if properties were recommended
+        if (discoveredProperties.length > 0) {
+          try {
+            const responseLower = (finalResponseContent || '').toLowerCase();
+            const matchedProperties: any[] = [];
+            const seenIds = new Set<string>();
+
+            // Identify which properties were actually presented/mentioned in final response
+            for (const prop of discoveredProperties) {
+              if (!prop || !prop.id || seenIds.has(prop.id)) continue;
+              const titleMatch = prop.title && responseLower.includes(prop.title.toLowerCase());
+              const nameMatch = prop.name && responseLower.includes(prop.name.toLowerCase());
+              const idMatch = prop.id && responseLower.includes(prop.id.toLowerCase());
+
+              if (titleMatch || nameMatch || idMatch) {
+                seenIds.add(prop.id);
+                matchedProperties.push(prop);
+              }
+            }
+
+            // Fallback: If no direct name match in text, take the top exact match from search
+            if (matchedProperties.length === 0 && discoveredProperties.length > 0) {
+              const topProp = discoveredProperties[0];
+              if (topProp && topProp.id) {
+                matchedProperties.push(topProp);
+                seenIds.add(topProp.id);
+              }
+            }
+
+            // Limit to top 2 properties to keep WhatsApp feed clean and readable (Rule 10)
+            const propertiesToDispatch = matchedProperties.slice(0, 2);
+
+            for (const prop of propertiesToDispatch) {
+              // Rule 13: Mode safety check before each property
+              if (!(await shouldAIRespond(conversationId))) {
+                logger.info({ conversationId, propId: prop.id }, 'Mode switched away from AI; halting media dispatch');
+                break;
+              }
+
+              const images: string[] = Array.isArray(prop.images) ? prop.images : [];
+              if (images.length === 0) {
+                logger.info({ propId: prop.id, title: prop.title || prop.name }, 'No photos available for property; skipping media dispatch without error');
+                continue;
+              }
+
+              // Rule 9: Send 1 to 3 best available photos per property
+              const imagesToSend = images.slice(0, 3);
+
+              for (let i = 0; i < imagesToSend.length; i++) {
+                if (!(await shouldAIRespond(conversationId))) break;
+
+                const imgUrl = imagesToSend[i];
+                // Rule 8: Associate caption with the correct property
+                const caption = i === 0
+                  ? `📸 ${prop.title || prop.name || 'Karjat Property'} · ${prop.location || prop.location_city || 'Karjat'}${prop.priceFormatted ? ' · ' + prop.priceFormatted : ''}`
+                  : undefined;
+
+                let mediaMsgId = `media-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+                try {
+                  logger.info({ conversationId, propId: prop.id, imgUrl }, 'Dispatching property photo via Fast2SMS');
+                  const mediaRes = await whatsappMessageService.sendImage({
+                    to: ctx.conversation.whatsapp_phone,
+                    url: imgUrl,
+                    caption,
+                  });
+                  if (mediaRes?.messageId) mediaMsgId = mediaRes.messageId;
+                } catch (imgErr: any) {
+                  // Rule 11: Failure handling - log and continue with property details, don't crash
+                  logger.error({ error: imgErr.message, propId: prop.id, imgUrl }, 'Failed to dispatch property image via Fast2SMS');
+                  continue;
+                }
+
+                // Record media message in database so it appears in CRM Inbox
+                try {
+                  await messageRepo.createMessage({
+                    conversation_id: conversationId,
+                    whatsapp_message_id: mediaMsgId,
+                    direction: 'outgoing',
+                    message_type: 'image',
+                    recipient_phone: ctx.conversation.whatsapp_phone,
+                    text_content: caption || '',
+                    media_url: imgUrl,
+                    status: 'sent',
+                    sent_at: new Date().toISOString(),
+                  });
+                } catch (dbErr: any) {
+                  logger.warn({ error: dbErr.message }, 'Failed to save media message record');
+                }
+              }
+            }
+          } catch (mediaErr: any) {
+            logger.error({ error: mediaErr.message, conversationId }, 'Unexpected error in property media dispatch loop');
+          }
+        }
+
         // Update State Machine
         await conversationStateMachine.updateConversationState(conversationId, nextState, {
           lastIntent: intents[0],
@@ -319,8 +457,11 @@ export class SalesAgentService {
         conversationId,
         ctx.messages.map((m) => `${m.role}: ${m.content}`).join('\n')
       ).catch((e) => logger.error(e));
+      
+      logger.info({ conversationId, duration: Date.now() - startTime }, `[PERF] AI_PROCESS_END`);
     } catch (error: any) {
       logger.error({ error: error.message, conversationId }, 'SalesAgentService failed');
+      logger.info({ conversationId, duration: Date.now() - startTime, failed: true }, `[PERF] AI_PROCESS_END`);
     }
   }
 

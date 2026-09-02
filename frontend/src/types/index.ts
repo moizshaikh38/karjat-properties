@@ -37,6 +37,8 @@ export interface Message {
   whatsapp_message_id: string;
   direction: 'incoming' | 'outgoing';
   text_content: string;
+  media_url?: string;
+  message_type?: string;
   status: string;
   created_at: string;
 }

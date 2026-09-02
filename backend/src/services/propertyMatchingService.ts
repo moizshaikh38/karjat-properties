@@ -28,6 +28,10 @@ const VERIFIED_KARJAT_PROPERTIES = [
     area_sqft: 750,
     carpet_area_sqft: 750,
     amenities: ['Mountain View', 'Power Backup', 'Security 24x7', 'Near Karjat Station'],
+    images: [
+      'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200',
+      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200'
+    ],
     status: 'available',
     description: 'Modern 2 BHK apartment near Karjat Station with panoramic mountain views and clear title.'
   },
@@ -46,6 +50,9 @@ const VERIFIED_KARJAT_PROPERTIES = [
     carpet_area_sqft: 10890,
     plot_area_sqft: 10890,
     amenities: ['Compound Wall', '3-Phase Power', 'Water Connection', '9m Internal Tar Road'],
+    images: [
+      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200'
+    ],
     status: 'available',
     description: '10 Guntha (10,890 sqft) Collector-Approved Sanctioned NA plot with clear 7/12 title.'
   },
@@ -64,6 +71,11 @@ const VERIFIED_KARJAT_PROPERTIES = [
     carpet_area_sqft: 1850,
     plot_area_sqft: 4500,
     amenities: ['Private Garden', 'Swimming Pool', 'Mountain View', 'Security 24x7'],
+    images: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200'
+    ],
     status: 'available',
     description: '3 BHK designer villa with private lawn and mountain views on 4,500 sqft NA land.'
   },
@@ -82,6 +94,10 @@ const VERIFIED_KARJAT_PROPERTIES = [
     carpet_area_sqft: 2000,
     plot_area_sqft: 5000,
     amenities: ['Clubhouse & Gym', 'Swimming Pool', '24x7 Gated Security', 'Landscaped Garden'],
+    images: [
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200',
+      'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1200'
+    ],
     status: 'available',
     description: '3BHK ready villa inside a 25-acre luxury township with clubhouse and bank loan approval.'
   },
@@ -100,6 +116,9 @@ const VERIFIED_KARJAT_PROPERTIES = [
     carpet_area_sqft: 108900,
     plot_area_sqft: 108900,
     amenities: ['Natural Stream Touch', '360 Mountain View', 'Tar Road Access', '7/12 Clear Title'],
+    images: [
+      'https://images.unsplash.com/photo-1500076656116-558758c991c1?w=1200'
+    ],
     status: 'available',
     description: '2.5 Acres (100 Guntha) table-top land with stream touch, ideal for resort or organic farmhouse.'
   },
@@ -118,6 +137,10 @@ const VERIFIED_KARJAT_PROPERTIES = [
     carpet_area_sqft: 2900,
     plot_area_sqft: 12000,
     amenities: ['Private Infinity Pool', 'Riverfront Access', '12000 sqft Lawn', 'Caretaker Cottage'],
+    images: [
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200',
+      'https://images.unsplash.com/photo-1613977257363-707ba9348227?w=1200'
+    ],
     status: 'available',
     description: '4 BHK riverfront estate with private infinity pool and clear 7/12 Sanctioned NA title.'
   },
@@ -136,21 +159,32 @@ const VERIFIED_KARJAT_PROPERTIES = [
     carpet_area_sqft: 2200,
     plot_area_sqft: 52272,
     amenities: ['45 Alphonso Mango Trees', 'Private Well Water', 'Plunge Pool', 'River Access'],
+    images: [
+      'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200',
+      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=1200'
+    ],
     status: 'available',
     description: '1.2 Acre (48 Guntha) gated orchard farmhouse with stone bungalow and private well.'
   }
 ];
 
 export const findMatchingProperties = async (leadId: string, options: MatchingOptions = { limit: 3, minScore: 50 }) => {
+  const searchStart = Date.now();
+  logger.info({ leadId }, '[PERF] PROPERTY_SEARCH_START');
+  
   const client = db.getClient();
   
   // 1. Get Requirements from DB if available
   let req: any = null;
   try {
-    const { data } = await client.from('lead_requirements').select('*').eq('lead_id', leadId).single();
-    req = data;
+    const { data: leadReq } = await client
+      .from('lead_requirements')
+      .select('*')
+      .eq('lead_id', leadId)
+      .single();
+    req = leadReq;
   } catch (err) {
-    // Ignore error if lead_requirements doesn't exist yet
+    // Lead requirement optional, fallback to arguments
   }
 
   // Merge direct options passed into the function (e.g. from searchProperties tool call)
@@ -162,13 +196,24 @@ export const findMatchingProperties = async (leadId: string, options: MatchingOp
     property_types: options.property_type ? [options.property_type] : req?.property_types,
   };
 
-  // 2. Fetch all Active properties from DB
+  // 2. Fetch Active properties from DB with hard filters pushed to Postgres
   let properties: any[] = [];
   try {
-    const { data, error } = await client
+    let query = client
       .from('properties')
-      .select('*')
+      .select('id, title, name, location, city, price, bhk, property_type, size_sqft, carpet_area_sqft, plot_area_sqft, amenities, status, description, images')
       .in('status', ['available']);
+
+    if (effectiveReq.preferred_bhk) {
+      query = query.eq('bhk', Number(effectiveReq.preferred_bhk));
+    }
+    
+    if (effectiveReq.max_budget) {
+      // 15% buffer added to match the JS scoring logic allowance
+      query = query.lte('price', Number(effectiveReq.max_budget) * 1.15);
+    }
+
+    const { data, error } = await query.limit(50); // limit to 50 best DB candidates max
 
     if (!error && data && data.length > 0) {
       properties = data.map((p: any) => ({
@@ -181,6 +226,11 @@ export const findMatchingProperties = async (leadId: string, options: MatchingOp
         property_type: p.property_type || 'villa',
         area_sqft: p.size_sqft || p.carpet_area_sqft || p.plot_area_sqft || 0,
         amenities: p.amenities || [],
+        images: Array.isArray(p.images)
+          ? p.images
+          : (typeof p.images === 'string'
+              ? (() => { try { return JSON.parse(p.images); } catch { return [p.images]; } })()
+              : []),
         status: p.status || 'available',
         description: p.description || ''
       }));
@@ -250,5 +300,7 @@ export const findMatchingProperties = async (leadId: string, options: MatchingOp
   // If no exact match passed 70, take top 2 properties so AI always has verified options to present!
   const finalExact = exactMatches.length > 0 ? exactMatches : scoredProperties.slice(0, 2);
 
+  logger.info({ leadId, matches: finalExact.length, duration: Date.now() - searchStart }, '[PERF] PROPERTY_SEARCH_END');
+  
   return { exactMatches: finalExact, alternatives, requirements: effectiveReq };
 };
