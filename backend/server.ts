@@ -5,6 +5,7 @@ import { logger } from './src/utils/logger';
 import { processDueFollowups } from './src/services/followups/followupScheduler';
 import { followupConfig } from './src/config/followup';
 import { startCampaignWorker } from './src/services/campaigns/campaignWorker';
+import { startKeepAliveService } from './src/services/keepAliveService';
 
 const startServer = () => {
   try {
@@ -22,6 +23,11 @@ const startServer = () => {
       }
 
       startCampaignWorker();
+
+      // Start Keep-Alive Self-Pinger (keeps Render free-tier instance awake 24/7)
+      if (env.NODE_ENV === 'production') {
+        startKeepAliveService();
+      }
     });
 
     // Handle unhandled promise rejections
