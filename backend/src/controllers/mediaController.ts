@@ -8,7 +8,8 @@ import { AppError } from '../utils/errors';
 
 export const uploadImages = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const files = req.files as Express.Multer.File[];
+    const rawFiles = (req as any).files;
+    const files = (Array.isArray(rawFiles) ? rawFiles : Object.values(rawFiles || {}).flat()) as Express.Multer.File[];
     if (!files || files.length === 0) {
       throw new AppError('No images provided for upload', 400, 'NO_FILES_UPLOADED');
     }
@@ -62,7 +63,7 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
 };
 
 export const uploadVideo = async (req: Request, res: Response, next: NextFunction) => {
-  const file = req.file;
+  const file = (req as any).file as Express.Multer.File | undefined;
   if (!file) {
     return next(new AppError('No video file provided for upload', 400, 'NO_FILE_UPLOADED'));
   }
