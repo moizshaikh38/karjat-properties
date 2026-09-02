@@ -12,6 +12,7 @@ const whatsappEnvSchema = z.object({
   // Fast2SMS Configuration
   FAST2SMS_API_KEY: z.string().optional(),
   FAST2SMS_PHONE_NUMBER_ID: z.string().optional(),
+  FAST2SMS_DISPLAY_NUMBER: z.string().optional(),
   FAST2SMS_API_VERSION: z.string().default('v26.0'),
   FAST2SMS_BASE_URL: z.string().url().default('https://www.fast2sms.com'),
   FAST2SMS_WEBHOOK_SECRET: z.string().optional(),
@@ -33,6 +34,7 @@ try {
       WHATSAPP_PROVIDER: 'mock',
       FAST2SMS_API_KEY: 'test-fast2sms-api-key',
       FAST2SMS_PHONE_NUMBER_ID: 'test-phone-number-id',
+      FAST2SMS_DISPLAY_NUMBER: '919820098200',
       FAST2SMS_API_VERSION: 'v26.0',
       FAST2SMS_BASE_URL: 'https://www.fast2sms.com',
       FAST2SMS_WEBHOOK_SECRET: 'test-webhook-secret',

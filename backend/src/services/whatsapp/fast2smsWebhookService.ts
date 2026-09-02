@@ -202,6 +202,18 @@ export class Fast2SMSWebhookService {
       return;
     }
 
+    if (event.phoneNumberId) {
+      try {
+        const { getWhatsAppProvider } = await import('./whatsappProviderFactory');
+        const provider = getWhatsAppProvider() as any;
+        if (provider?.setDynamicPhoneNumberId) {
+          provider.setDynamicPhoneNumberId(event.phoneNumberId);
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+
     logger.info({ phone: event.customerPhone, text: event.text }, 'Processing Fast2SMS customer incoming message');
 
     const processedMsg: ProcessedWebhookMessage = {

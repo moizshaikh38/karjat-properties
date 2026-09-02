@@ -24,6 +24,7 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
   private client: AxiosInstance;
   private apiKey: string;
   private phoneNumberId: string;
+  private displayNumber: string;
   private apiVersion: string;
   private baseURL: string;
   private lastSendAt?: string;
@@ -33,6 +34,7 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
   constructor() {
     this.apiKey = waConfig.FAST2SMS_API_KEY || '';
     this.phoneNumberId = waConfig.FAST2SMS_PHONE_NUMBER_ID || '';
+    this.displayNumber = waConfig.FAST2SMS_DISPLAY_NUMBER || '';
     this.apiVersion = waConfig.FAST2SMS_API_VERSION || 'v26.0';
     this.baseURL = waConfig.FAST2SMS_BASE_URL || 'https://www.fast2sms.com';
 
@@ -45,12 +47,25 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
       },
     });
 
-    // Request interceptor to log safely (never log the API key)
     this.client.interceptors.request.use((config) => {
       const maskedUrl = config.url?.replace(/to=\d{6}(\d{4})/, 'to=******$1');
       logger.debug({ method: config.method, url: maskedUrl }, 'Fast2SMS API Request');
       return config;
     });
+  }
+
+  public setDynamicPhoneNumberId(phoneId: string): void {
+    if (phoneId && phoneId !== this.phoneNumberId) {
+      this.phoneNumberId = phoneId;
+      logger.info({ phoneId }, 'Fast2SMS dynamic Phone Number ID registered from webhook');
+    }
+  }
+
+  public setDynamicDisplayNumber(num: string): void {
+    if (num && num !== this.displayNumber) {
+      this.displayNumber = num;
+      logger.info({ num }, 'Fast2SMS dynamic Display Number registered from webhook');
+    }
   }
 
   /**
@@ -61,12 +76,9 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
     return normalized.replace('+', '');
   }
 
-  /**
-   * Helper to ensure provider is configured
-   */
   private ensureConfigured(): void {
-    if (!this.apiKey || !this.phoneNumberId) {
-      const errorMsg = 'Fast2SMS provider is not fully configured (missing API key or Phone Number ID)';
+    if (!this.apiKey) {
+      const errorMsg = 'Fast2SMS provider is not fully configured (missing API key)';
       this.lastError = errorMsg;
       throw new WhatsAppAuthenticationError(errorMsg);
     }
@@ -79,6 +91,8 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
     this.ensureConfigured();
 
     try {
+      logger.info({ to: payload.to || payload.numbers }, 'Dispatching WhatsApp message via Fast2SMS');
+
       const response = await this.client.post(url, payload);
       this.lastSendAt = new Date().toISOString();
 
@@ -102,9 +116,6 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
     }
   }
 
-  /**
-   * Standard error handler mapping to specialized error classes
-   */
   private handleError(error: any): never {
     if (error.response) {
       const status = error.response.status;
@@ -112,15 +123,15 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
       const message = data.message || data.error || (typeof data === 'string' ? data : 'Fast2SMS API request failed');
       const errorCode = data.code || status;
 
-      this.lastError = `${status}: ${message}`;
+      this.lastError = `${status}: ${JSON.stringify(data.errors || message)}`;
 
-      logger.error({ status, message, errorCode }, 'Fast2SMS API Error Response');
+      logger.error({ status, message, errors: data.errors, errorCode }, 'Fast2SMS API Error Response');
 
       if (status === 401 || status === 403) {
         throw new WhatsAppAuthenticationError(`Fast2SMS Auth Error (${status}): ${message}`);
       }
       if (status === 400 || status === 422) {
-        throw new WhatsAppValidationError(`Fast2SMS Validation Error (${status}): ${message}`);
+        throw new WhatsAppValidationError(`Fast2SMS Validation Error (${status}): ${JSON.stringify(data.errors || message)}`);
       }
       if (status === 429) {
         throw new WhatsAppRateLimitError(`Fast2SMS Rate Limit Exceeded: ${message}`);
@@ -149,7 +160,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendText({ to, text }: SendTextMessageParams): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-session`;
+
     const payload = {
       type: 'text',
       text,
@@ -159,7 +173,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendImage({ to, url, caption }: SendMediaMessageParams): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-session`;
+
     const payload = {
       type: 'image',
       image: {
@@ -172,7 +189,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendDocument({ to, url, caption, filename }: SendDocumentMessageParams): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-session`;
+
     const payload = {
       type: 'document',
       document: {
@@ -186,7 +206,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendVideo({ to, url, caption }: SendMediaMessageParams): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-session`;
+
     const payload = {
       type: 'video',
       video: {
@@ -199,7 +222,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendAudio({ to, url }: { to: string; url: string }): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-session`;
+
     const payload = {
       type: 'audio',
       audio: {
@@ -211,7 +237,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendLocation({ to, latitude, longitude, name, address }: SendLocationMessageParams): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-session?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-session`;
+
     const payload = {
       type: 'location',
       location: {
@@ -228,9 +257,10 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
 
   public async sendTemplate({ to, templateName, language = 'en', components, variables, mediaUrl }: SendTemplateMessageParams): Promise<ProviderSendResult> {
     const formattedPhone = this.formatPhone(to);
-    const endpoint = `/dev/whatsapp-template?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`;
+    const endpoint = this.phoneNumberId
+      ? `/dev/whatsapp-template?phone_number_id=${this.phoneNumberId}&to=${formattedPhone}`
+      : `/dev/whatsapp-template`;
     
-    // Construct Fast2SMS template payload
     const payload: any = {
       template_name: templateName,
       language: {
@@ -265,12 +295,11 @@ export class Fast2SMSProvider implements IWhatsAppProvider {
   }
 
   public async getHealth(): Promise<ProviderHealth> {
-    const isConfigured = Boolean(this.apiKey && this.phoneNumberId);
+    const isConfigured = Boolean(this.apiKey);
     let isReachable = false;
 
     if (isConfigured) {
       try {
-        // Fast ping / endpoint check (using lightweight check or base url)
         isReachable = true;
       } catch {
         isReachable = false;
