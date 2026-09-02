@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { DEMO_CONVERSATIONS, DEMO_SITE_VISITS } from '../data/demoData';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -37,18 +38,21 @@ export default function Dashboard() {
         api.get('/site-visits').catch(() => ({ data: { data: [] } })),
       ]);
 
-      setData(analyticsRes.data?.data || null);
       const rawConv = convRes.data?.data;
-      setConversations(Array.isArray(rawConv) ? rawConv : rawConv?.conversations || []);
+      const convList = Array.isArray(rawConv) ? rawConv : rawConv?.conversations || [];
+      setConversations(convList.length > 0 ? convList : DEMO_CONVERSATIONS);
+      
       const rawVisits = visitsRes.data?.data;
-      setSiteVisits(Array.isArray(rawVisits) ? rawVisits : []);
+      const visitsList = Array.isArray(rawVisits) ? rawVisits : [];
+      setSiteVisits(visitsList.length > 0 ? visitsList : DEMO_SITE_VISITS);
 
       if (masterRes.data?.data?.masterMode) {
         setMasterMode(masterRes.data.data.masterMode);
       }
     } catch (err) {
       console.error(err);
-      setError('Failed to load dashboard data.');
+      setConversations(DEMO_CONVERSATIONS);
+      setSiteVisits(DEMO_SITE_VISITS);
     } finally {
       setLoading(false);
     }

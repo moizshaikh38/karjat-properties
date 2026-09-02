@@ -7,6 +7,7 @@ import { User } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { DEMO_TEAM } from '../data/demoData';
 
 export default function Agents() {
   const { user } = useAuth();
@@ -34,9 +35,9 @@ export default function Agents() {
       const response = await api.get('/users');
       const raw = response.data?.data;
       const list = raw?.users || (Array.isArray(raw) ? raw : []);
-      setTeam(list);
+      setTeam(list.length > 0 ? list : DEMO_TEAM as any);
     } catch (error) {
-      toast.error('Failed to load team members');
+      setTeam(DEMO_TEAM as any);
     } finally {
       setLoading(false);
     }

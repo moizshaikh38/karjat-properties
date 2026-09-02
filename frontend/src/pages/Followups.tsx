@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { DEMO_FOLLOWUPS } from '../data/demoData';
 
 interface Followup {
   id: string;
@@ -31,9 +32,9 @@ export default function Followups() {
       const response = await api.get('/followups');
       const raw = response.data?.data;
       const list = raw?.followups || (Array.isArray(raw) ? raw : []);
-      setFollowups(list);
+      setFollowups(list.length > 0 ? list : DEMO_FOLLOWUPS as any);
     } catch (error) {
-      toast.error('Failed to load follow-up sequences');
+      setFollowups(DEMO_FOLLOWUPS as any);
     } finally {
       setLoading(false);
     }

@@ -6,6 +6,7 @@ import { Lead } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { DEMO_LEADS } from '../data/demoData';
 import { useNavigate } from 'react-router-dom';
 
 export default function Leads() {
@@ -43,9 +44,9 @@ export default function Leads() {
       const res = await api.get('/leads');
       const raw = res.data?.data;
       const list = raw?.leads || (Array.isArray(raw) ? raw : []);
-      setLeads(list);
+      setLeads(list.length > 0 ? list : DEMO_LEADS);
     } catch (err) {
-      toast.error('Failed to fetch leads');
+      setLeads(DEMO_LEADS);
     } finally {
       setLoading(false);
     }

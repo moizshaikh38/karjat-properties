@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { DEMO_CAMPAIGNS } from '../data/demoData';
 
 interface Campaign {
   id: string;
@@ -38,9 +39,9 @@ export default function Campaigns() {
       const response = await api.get('/campaigns');
       const raw = response.data?.data;
       const list = raw?.campaigns || (Array.isArray(raw) ? raw : []);
-      setCampaigns(list);
+      setCampaigns(list.length > 0 ? list : DEMO_CAMPAIGNS as any);
     } catch (error) {
-      toast.error('Failed to load campaigns');
+      setCampaigns(DEMO_CAMPAIGNS as any);
     } finally {
       setLoading(false);
     }

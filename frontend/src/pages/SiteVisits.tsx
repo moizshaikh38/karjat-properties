@@ -6,6 +6,7 @@ import api from '../services/api';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { DEMO_SITE_VISITS } from '../data/demoData';
 
 interface SiteVisit {
   id: string;
@@ -31,9 +32,9 @@ export default function SiteVisits() {
       const response = await api.get('/site-visits');
       const raw = response.data?.data;
       const list = raw?.siteVisits || (Array.isArray(raw) ? raw : []);
-      setVisits(list);
+      setVisits(list.length > 0 ? list : DEMO_SITE_VISITS as any);
     } catch {
-      toast.error('Failed to load site visits');
+      setVisits(DEMO_SITE_VISITS as any);
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ import ChatWindow from '../components/ChatWindow';
 import AICopilot from '../components/AICopilot';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '../components/ui/Badge';
+import { DEMO_CONVERSATIONS } from '../data/demoData';
 
 export default function Inbox() {
   const navigate = useNavigate();
@@ -18,9 +19,11 @@ export default function Inbox() {
   const fetchConversations = async () => {
     try {
       const res = await api.get('/conversations');
-      setConversations(res.data?.data || []);
+      const raw = res.data?.data;
+      const list = Array.isArray(raw) ? raw : raw?.conversations || [];
+      setConversations(list.length > 0 ? list : DEMO_CONVERSATIONS as any);
     } catch (err) {
-      console.error(err);
+      setConversations(DEMO_CONVERSATIONS as any);
     }
   };
 

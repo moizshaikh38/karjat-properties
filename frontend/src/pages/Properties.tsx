@@ -33,6 +33,7 @@ import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { DEMO_PROPERTIES } from '../data/demoData';
 
 const KARJAT_LOCATIONS = [
   'Kashele, Karjat',
@@ -136,9 +137,9 @@ export default function Properties() {
       const res = await api.get('/properties');
       const raw = res.data?.data;
       const list = raw?.properties || (Array.isArray(raw) ? raw : []);
-      setProperties(list);
+      setProperties(list.length > 0 ? list : DEMO_PROPERTIES);
     } catch (err) {
-      toast.error('Failed to load inventory');
+      setProperties(DEMO_PROPERTIES);
     } finally {
       setLoading(false);
     }

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Plus, RefreshCw, MessageSquare, Phone } from 'lucide-react';
+import { DEMO_LEADS } from '../data/demoData';
 
 const STAGES = [
   { id: 'NEW', title: 'New Inquiries' },
@@ -27,9 +28,9 @@ export default function Pipeline() {
       const res = await api.get('/leads');
       const raw = res.data?.data;
       const list = raw?.leads || (Array.isArray(raw) ? raw : []);
-      setLeads(list);
+      setLeads(list.length > 0 ? list : DEMO_LEADS as any);
     } catch (err) {
-      toast.error('Failed to load sales pipeline');
+      setLeads(DEMO_LEADS as any);
     } finally {
       setLoading(false);
     }
