@@ -19,7 +19,6 @@ export const executeGetSiteVisitSlots = async () => {
   return {
     success: true,
     availableSlots: BUSINESS_KNOWLEDGE.siteVisits.standardSlots,
-    pickupLocation: 'Karjat Railway Station (West/East)',
     guidelines: BUSINESS_KNOWLEDGE.siteVisits.guidelines,
     workingDays: BUSINESS_KNOWLEDGE.siteVisits.availability,
   };

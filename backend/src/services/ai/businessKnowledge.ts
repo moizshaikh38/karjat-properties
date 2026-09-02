@@ -16,7 +16,6 @@ export const BUSINESS_KNOWLEDGE = {
   siteVisits: {
     availability: 'Available all 7 days of the week',
     standardSlots: ['10:00 AM', '01:00 PM', '04:00 PM'],
-    complimentaryPickup: 'Free cab pickup available from Karjat Railway Station upon confirmed appointment',
     guidelines:
       'Appointments must be booked at least 4 hours in advance. Dedicated sales executive accompanies the visit.',
   },
