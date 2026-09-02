@@ -23,8 +23,18 @@ import { apiRateLimiter } from './middleware/rateLimiter';
 
 const app: Application = express();
 
-// Middleware
-app.use(cors({ origin: env.FRONTEND_URL }));
+// Permissive CORS for Vercel, Localhost & Custom Domains
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || origin === env.FRONTEND_URL || origin.includes('vercel.app') || origin.includes('localhost')) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
+  credentials: true,
+}));
+
 app.use(
   express.json({
     limit: '10mb',
@@ -39,6 +49,21 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+// Root Probe Route (For Render health checks & browser verification)
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    service: 'Karjat Properties AI CRM Backend',
+    status: 'operational',
+    environment: env.NODE_ENV,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.head('/', (req: Request, res: Response) => {
+  res.status(200).end();
+});
+
 // Webhooks
 app.use('/api/webhooks/fast2sms', fast2smsWebhookRouter);
 app.use('/api/webhooks/whatsapp', whatsappWebhookRouter);
@@ -46,7 +71,7 @@ app.use('/api/webhooks/whatsapp', whatsappWebhookRouter);
 // Apply general API rate limit to all /api routes
 app.use('/api', apiRateLimiter);
 
-// Routes
+// API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
