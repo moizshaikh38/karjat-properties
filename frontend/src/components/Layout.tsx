@@ -20,32 +20,43 @@ interface NavItemProps {
   onClick?: () => void;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, badge, collapsed, onClick }) => (
-  <NavLink
-    to={to}
-    onClick={onClick}
-    className={({ isActive }) => `
-      flex items-center px-2.5 py-1.5 rounded-[6px] transition-all group relative select-none
-      ${isActive 
-        ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-medium border border-[var(--color-border)] shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]' 
-        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)]/50 border border-transparent'
-      }
-    `}
-    title={collapsed ? label : undefined}
-  >
-    <Icon className="h-4 w-4 flex-shrink-0 text-[var(--color-text-muted)] group-hover:text-[var(--color-text)] transition-colors" />
-    {!collapsed && (
-      <>
-        <span className="ml-2.5 truncate text-[12.5px]">{label}</span>
-        {badge !== undefined && badge > 0 && (
-          <span className="ml-auto bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/30 py-0.2 px-1.5 rounded-[3px] text-[10.5px] font-medium font-mono">
-            {badge}
-          </span>
-        )}
-      </>
-    )}
-  </NavLink>
-);
+const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, badge, collapsed, onClick }) => {
+  const location = useLocation();
+  const handleClick = (e: React.MouseEvent) => {
+    if (to === '/inbox' && location.pathname === '/inbox') {
+      e.preventDefault();
+      return;
+    }
+    if (onClick) onClick();
+  };
+
+  return (
+    <NavLink
+      to={to}
+      onClick={handleClick}
+      className={({ isActive }) => `
+        flex items-center px-2.5 py-1.5 rounded-[6px] transition-all group relative select-none
+        ${isActive 
+          ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-medium border border-[var(--color-border)] shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]' 
+          : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)]/50 border border-transparent'
+        }
+      `}
+      title={collapsed ? label : undefined}
+    >
+      <Icon className="h-4 w-4 flex-shrink-0 text-[var(--color-text-muted)] group-hover:text-[var(--color-text)] transition-colors" />
+      {!collapsed && (
+        <>
+          <span className="ml-2.5 truncate text-[12.5px]">{label}</span>
+          {badge !== undefined && badge > 0 && (
+            <span className="ml-auto bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/30 py-0.2 px-1.5 rounded-[3px] text-[10.5px] font-medium font-mono">
+              {badge}
+            </span>
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+};
 
 const NavSection: React.FC<{ title: string; collapsed: boolean; children: React.ReactNode }> = ({ title, collapsed, children }) => (
   <div className="space-y-0.5 pt-3 first:pt-0">
@@ -92,9 +103,11 @@ export const Layout: React.FC = () => {
       {/* MOBILE TOP BAR (Glassmorphism & Fast Touch) */}
       <header className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-[var(--color-surface)]/90 backdrop-blur-md border-b border-[var(--color-border)] sticky top-0 z-30 pt-safe">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-[4px] bg-[var(--color-accent)] flex items-center justify-center text-white shadow-xs">
-            <Building2 className="h-4 w-4" />
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Karjat Properties" 
+            className="w-7 h-7 rounded-full object-cover shadow-xs border border-[var(--color-border)] flex-shrink-0" 
+          />
           <div>
             <span className="font-semibold text-[13.5px] text-[var(--color-text)] tracking-tight block font-display">
               Karjat Properties
@@ -134,9 +147,11 @@ export const Layout: React.FC = () => {
         {/* Brand Header */}
         <div className="h-12 flex items-center justify-between px-3.5 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-6 h-6 rounded-[4px] bg-[var(--color-accent)] flex items-center justify-center text-white flex-shrink-0">
-              <Building2 className="h-3.5 w-3.5" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Karjat Properties" 
+              className="w-7 h-7 rounded-full object-cover shadow-xs border border-[var(--color-border)] flex-shrink-0" 
+            />
             {!collapsed && (
               <div className="truncate">
                 <span className="font-semibold text-[13px] text-[var(--color-text)] tracking-tight block truncate font-display">
@@ -244,7 +259,7 @@ export const Layout: React.FC = () => {
         </header>
 
         {/* Content View with Mobile Safe Area Padding */}
-        <div className="flex-1 overflow-y-auto pb-safe md:pb-0 relative hide-scrollbar">
+        <div className={`flex-1 ${location.pathname.startsWith('/inbox') ? 'overflow-hidden pb-14 md:pb-0' : 'overflow-y-auto pb-safe md:pb-0'} relative hide-scrollbar`}>
           <Outlet />
         </div>
       </main>
@@ -260,6 +275,11 @@ export const Layout: React.FC = () => {
         </NavLink>
         <NavLink 
           to="/inbox" 
+          onClick={(e) => {
+            if (location.pathname.startsWith('/inbox')) {
+              e.preventDefault();
+            }
+          }}
           className={({isActive}) => `flex flex-col items-center py-1.5 px-3 rounded-[6px] transition-colors relative ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
           <div className="relative">
@@ -302,7 +322,14 @@ export const Layout: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-3.5 border-b border-[var(--color-border)] flex items-center justify-between">
-              <span className="font-semibold text-[13.5px] text-[var(--color-text)] font-display">Karjat Properties</span>
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/logo.png" 
+                  alt="Karjat Properties" 
+                  className="w-6 h-6 rounded-full object-cover shadow-xs border border-[var(--color-border)] flex-shrink-0" 
+                />
+                <span className="font-semibold text-[13.5px] text-[var(--color-text)] font-display">Karjat Properties</span>
+              </div>
               <button 
                 onClick={() => setMobileMenuOpen(false)}
                 className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px] cursor-pointer"

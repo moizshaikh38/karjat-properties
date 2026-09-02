@@ -109,13 +109,20 @@ export default function Dashboard() {
       
       {/* TOP HEADER WITH DATE RANGE & SYNC */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
-        <div>
-          <h1 className="text-[22px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
-            Karjat Real Estate Command Hub
-          </h1>
-          <p className="text-[12px] sm:text-[13px] text-[var(--color-text-muted)] mt-0.5">
-            Active brokerage pipeline, weekend site visits, and WhatsApp discovery metrics.
-          </p>
+        <div className="flex items-center gap-3">
+          <img 
+            src="/logo.png" 
+            alt="Karjat Properties" 
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover shadow-sm border border-[var(--color-border)] flex-shrink-0" 
+          />
+          <div>
+            <h1 className="text-[20px] sm:text-[26px] font-medium font-display tracking-tight text-[var(--color-text)]">
+              Karjat Real Estate Command Hub
+            </h1>
+            <p className="text-[12px] sm:text-[13px] text-[var(--color-text-muted)] mt-0.5">
+              Active brokerage pipeline, weekend site visits, and WhatsApp discovery metrics.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between sm:justify-end gap-2">

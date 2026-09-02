@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Bot, User, Clock, MessageSquare, Plus, Sparkles, Radio } from 'lucide-react';
 import api from '../services/api';
@@ -77,21 +77,43 @@ export default function Inbox() {
       return timeB - timeA;
     });
 
-  const isMobile = window.innerWidth < 768;
-  const isConversationSelected = location.pathname.includes('/inbox/');
-  const currentConvId = location.pathname.split('/inbox/')[1] || (filteredConversations[0]?.id ?? '');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const listRef = useRef<HTMLDivElement>(null);
+  const listScrollPosRef = useRef<number>(0);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const selectedId = location.pathname.split('/inbox/')[1]?.trim() || '';
+  const isConversationSelected = Boolean(selectedId);
+  const currentConvId = selectedId || (!isMobile ? (filteredConversations[0]?.id ?? '') : '');
   const activeConv = filteredConversations.find(c => c.id === currentConvId) || conversations.find(c => c.id === currentConvId) || null;
 
-  // If no conversation in URL and we have conversations, navigate to first
+  // Desktop only: auto-redirect /inbox to first conversation for split-pane
+  // On mobile: keep /inbox on the conversation list so Back button returns to list!
   useEffect(() => {
-    const selectedId = location.pathname.split('/inbox/')[1];
+    if (isMobile) return;
     if (!selectedId && filteredConversations[0]?.id) {
       navigate(`/inbox/${filteredConversations[0].id}`, { replace: true });
     }
-  }, [location.pathname, filteredConversations]);
+  }, [isMobile, selectedId, filteredConversations]);
+
+  // Restore scroll position when returning from chat to list on mobile
+  useEffect(() => {
+    if (!isConversationSelected && listRef.current && listScrollPosRef.current > 0) {
+      requestAnimationFrame(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = listScrollPosRef.current;
+        }
+      });
+    }
+  }, [isConversationSelected]);
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] bg-[var(--color-bg)] overflow-hidden animate-entrance">
+    <div className="flex h-full w-full bg-[var(--color-bg)] overflow-hidden">
       
       {/* LEFT PANE - High Density WhatsApp Conversation List (320px) */}
       <div className={`w-full md:w-80 flex-shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col ${isMobile && isConversationSelected ? 'hidden' : 'block'}`}>
@@ -99,8 +121,12 @@ export default function Inbox() {
         {/* Search & Filter Header */}
         <div className="p-3 border-b border-[var(--color-border)] space-y-2.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <MessageSquare className="w-4 h-4 text-[var(--color-accent)]" />
+            <div className="flex items-center gap-2">
+              <img 
+                src="/logo.png" 
+                alt="Karjat Properties" 
+                className="w-5 h-5 rounded-full object-cover shadow-xs border border-[var(--color-border)] flex-shrink-0" 
+              />
               <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Chats</h2>
             </div>
             <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
@@ -138,7 +164,7 @@ export default function Inbox() {
         </div>
 
         {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[var(--color-border)] hide-scrollbar">
+        <div ref={listRef} className="flex-1 overflow-y-auto divide-y divide-[var(--color-border)] hide-scrollbar">
           {filteredConversations.length === 0 ? (
             <div className="p-6 text-center text-[12px] text-[var(--color-text-muted)]">
               No matching WhatsApp chats found.
@@ -159,6 +185,9 @@ export default function Inbox() {
                   key={conv.id}
                   onClick={() => {
                     console.log(`[PERF] CHAT_SWITCH_CLICK conversationId=${conv.id}`);
+                    if (listRef.current) {
+                      listScrollPosRef.current = listRef.current.scrollTop;
+                    }
                     navigate(`/inbox/${conv.id}`);
                   }}
                   className={`p-3 cursor-pointer transition-colors ${
@@ -210,7 +239,7 @@ export default function Inbox() {
       </div>
 
       {/* CENTER & RIGHT: CHAT THREAD + COPILOT WORKSPACE */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className={`flex-1 flex overflow-hidden ${isMobile && !isConversationSelected ? 'hidden' : 'flex'}`}>
         {currentConvId ? (
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 h-full overflow-hidden">
@@ -225,8 +254,14 @@ export default function Inbox() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-[13px]">
-            Select a WhatsApp conversation to begin.
+          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-text-muted)] text-[13px] gap-2.5 p-6 text-center">
+            <img 
+              src="/logo.png" 
+              alt="Karjat Properties" 
+              className="w-16 h-16 rounded-full object-cover shadow-md border border-[var(--color-border)] opacity-85 mb-1" 
+            />
+            <span className="font-medium text-[14px] text-[var(--color-text)] font-display">Karjat Properties CRM</span>
+            <span className="text-[12px] text-[var(--color-text-muted)] max-w-xs">Select a WhatsApp conversation from the left to inspect customer preferences and start messaging.</span>
           </div>
         )}
       </div>

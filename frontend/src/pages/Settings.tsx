@@ -71,13 +71,20 @@ export default function Settings() {
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6 animate-entrance">
       
       {/* HEADER */}
-      <div className="pb-4 border-b border-[var(--color-border)]">
-        <h1 className="text-[24px] sm:text-[28px] font-medium font-display tracking-tight text-[var(--color-text)]">
-          System & Account Settings
-        </h1>
-        <p className="text-[13px] text-[var(--color-text-muted)] mt-0.5">
-          Fast2SMS gateway configuration, staff credentials, and brokerage preferences.
-        </p>
+      <div className="pb-4 border-b border-[var(--color-border)] flex items-center gap-3">
+        <img 
+          src="/logo.png" 
+          alt="Karjat Properties" 
+          className="w-11 h-11 rounded-full object-cover shadow-sm border border-[var(--color-border)] flex-shrink-0" 
+        />
+        <div>
+          <h1 className="text-[22px] sm:text-[26px] font-medium font-display tracking-tight text-[var(--color-text)]">
+            System & Account Settings
+          </h1>
+          <p className="text-[12.5px] sm:text-[13px] text-[var(--color-text-muted)] mt-0.5">
+            Fast2SMS gateway configuration, staff credentials, and brokerage preferences.
+          </p>
+        </div>
       </div>
 
       {/* 1. WHATSAPP GATEWAY */}

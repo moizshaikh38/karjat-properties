@@ -150,11 +150,21 @@ export default function ChatWindow({ conversationId, initialConversation, onMode
     };
   }, [conversationId, initialConversation]);
 
+  const scrollToBottom = (smooth = false) => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (smooth) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
+  };
+
   useEffect(() => {
     if (messages.length === 0) return;
 
     if (isInitialLoadRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      scrollToBottom(false);
       isInitialLoadRef.current = false;
       prevMsgCountRef.current = messages.length;
       return;
@@ -163,11 +173,11 @@ export default function ChatWindow({ conversationId, initialConversation, onMode
     if (messages.length > prevMsgCountRef.current) {
       const container = containerRef.current;
       const isNearBottom = container
-        ? container.scrollHeight - container.scrollTop - container.clientHeight < 180
+        ? container.scrollHeight - container.scrollTop - container.clientHeight < 200
         : true;
 
       if (isNearBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        scrollToBottom(true);
       }
       prevMsgCountRef.current = messages.length;
     }
@@ -242,8 +252,15 @@ export default function ChatWindow({ conversationId, initialConversation, onMode
       <div className="h-12 px-4 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0 z-10">
         <div className="flex items-center gap-2.5 min-w-0">
           <button 
-            onClick={() => navigate('/inbox')} 
-            className="md:hidden p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1);
+              } else {
+                navigate('/inbox', { replace: true });
+              }
+            }} 
+            className="md:hidden p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
+            aria-label="Back to conversation list"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>

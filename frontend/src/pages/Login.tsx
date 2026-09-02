@@ -90,9 +90,11 @@ export default function Login() {
         {/* Top Floating Badge */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-[4px] bg-[var(--color-accent)] text-white flex items-center justify-center shadow-lg">
-              <Building2 className="w-4 h-4" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Karjat Properties" 
+              className="w-9 h-9 rounded-full object-cover shadow-lg border border-[var(--color-border)]" 
+            />
             <div>
               <span className="font-medium text-[15px] font-display tracking-tight text-[var(--color-text)] block">
                 Karjat Properties
@@ -157,9 +159,11 @@ export default function Login() {
         {/* Mobile Header */}
         <div className="flex lg:hidden items-center justify-between pb-6 border-b border-[var(--color-border)] mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-[4px] bg-[var(--color-accent)] text-white flex items-center justify-center shadow-xs">
-              <Building2 className="w-4 h-4" />
-            </div>
+            <img 
+              src="/logo.png" 
+              alt="Karjat Properties" 
+              className="w-8 h-8 rounded-full object-cover shadow-xs border border-[var(--color-border)]" 
+            />
             <div>
               <span className="font-semibold text-[14px] font-display text-[var(--color-text)] block">
                 Karjat Properties
@@ -177,7 +181,12 @@ export default function Login() {
 
         {/* Middle Auth Card Form */}
         <div className="my-auto max-w-sm w-full mx-auto space-y-6 py-6">
-          <div className="space-y-1.5 text-center sm:text-left">
+          <div className="space-y-2 text-center sm:text-left">
+            <img 
+              src="/logo.png" 
+              alt="Karjat Properties" 
+              className="w-14 h-14 rounded-full object-cover shadow-md border border-[var(--color-border)] mx-auto sm:mx-0 mb-2" 
+            />
             <div className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-[10.5px] font-mono text-[var(--color-text-muted)] mb-1">
               <Lock className="w-3 h-3 text-[var(--color-gold-muted)]" /> Authorized Personnel Only
             </div>
