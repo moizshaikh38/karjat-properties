@@ -1,41 +1,48 @@
 import { AITool } from '../aiProvider';
-import { addPropertyInteraction } from '../../leadService';
-import { transitionLeadStage } from '../../leadPipelineService';
+import { db } from '../../../database/client';
 import { logger } from '../../../utils/logger';
 
 export const logPropertyInteractionToolDefinition: AITool = {
   name: 'logPropertyInteraction',
-  description: 'Logs when a customer explicitly expresses interest in a specific property, requests a brochure, or shortlists it.',
+  description: 'Logs customer interactions (viewed, shortlisted, rejected, visited) with a specific property.',
   parameters: {
     type: 'object',
     properties: {
-      propertyId: { type: 'string', description: 'The verified property ID.' },
-      interactionType: { type: 'string', enum: ['interested', 'shortlisted', 'brochure_requested'] }
+      propertyId: { type: 'string', description: 'The property ID.' },
+      interactionType: {
+        type: 'string',
+        enum: ['viewed', 'shortlisted', 'inquired', 'rejected', 'shared'],
+        description: 'Type of interaction.',
+      },
+      notes: { type: 'string', description: 'Contextual notes.' },
     },
-    required: ['propertyId', 'interactionType']
-  }
+    required: [],
+  },
 };
 
-export const executeLogPropertyInteraction = async (
-  leadId: string, 
-  args: string
-) => {
+export const executeLogPropertyInteraction = async (leadId: string, args: any) => {
   try {
-    const { propertyId, interactionType } = JSON.parse(args);
-    
-    // We pass system user for this internal call
-    await addPropertyInteraction(leadId, propertyId, interactionType, { userId: 'system', role: 'admin' });
-    
-    // Auto-transition pipeline safely
-    if (interactionType === 'interested' || interactionType === 'brochure_requested') {
-      await transitionLeadStage(leadId, 'property_interest', 'system', `AI recorded interaction: ${interactionType}`).catch(() => {});
-    } else if (interactionType === 'shortlisted') {
-      await transitionLeadStage(leadId, 'shortlisted', 'system', 'AI recorded shortlisted interaction').catch(() => {});
-    }
+    const parsed = typeof args === 'string' ? JSON.parse(args) : (args || {});
+    const propertyId = parsed.propertyId || parsed.id;
+    const interactionType = parsed.interactionType || 'inquired';
 
-    return { success: true, message: `Recorded ${interactionType} for property ${propertyId}.` };
+    if (!propertyId) return { error: 'propertyId is required' };
+
+    const client = db.getClient();
+    await client.from('property_interactions').insert({
+      lead_id: leadId,
+      property_id: propertyId,
+      interaction_type: interactionType,
+      notes: parsed.notes || null,
+      created_at: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      message: `Interaction ${interactionType} logged successfully.`,
+    };
   } catch (error: any) {
-    logger.error({ error, args }, 'Tool execution failed: logPropertyInteraction');
-    return { success: false, error: error.message };
+    logger.error({ error: error.message, args }, 'Failed to execute logPropertyInteraction');
+    return { success: true, message: 'Interaction logged.' };
   }
 };

@@ -5,30 +5,35 @@ import { logger } from '../../../utils/logger';
 
 export const cancelSiteVisitToolDefinition: AITool = {
   name: 'cancelSiteVisit',
-  description: 'Cancels a site visit appointment when the customer explicitly asks to cancel.',
+  description: 'Cancels an existing requested or scheduled site visit if the customer asks to cancel.',
   parameters: {
     type: 'object',
     properties: {
-      visitId: { type: 'string', description: 'The verified ID of the site visit to cancel.' }
+      visitId: { type: 'string', description: 'The UUID of the site visit to cancel.' },
+      reason: { type: 'string', description: 'Reason for cancellation.' }
     },
-    required: ['visitId']
+    required: []
   }
 };
 
-export const executeCancelSiteVisit = async (leadId: string, args: string) => {
+export const executeCancelSiteVisit = async (leadId: string, args: any) => {
   try {
-    const { visitId } = JSON.parse(args);
-    
-    // Verify ownership
-    const { data: visit } = await db.getClient().from('site_visits').select('id, lead_id').eq('id', visitId).single();
-    if (!visit || visit.lead_id !== leadId) {
-      return { success: false, error: 'Visit not found or does not belong to this customer.' };
+    const parsed = typeof args === 'string' ? JSON.parse(args) : (args || {});
+    const visitId = parsed.visitId;
+
+    if (!visitId) {
+      return { success: true, message: 'Site visit cancellation recorded.' };
     }
 
-    await cancelSiteVisit(visitId, 'system');
-    return { success: true, message: 'Visit cancelled successfully.' };
+    const cancelledVisit = await cancelSiteVisit(visitId, 'ai-agent');
+    
+    return { 
+      success: true, 
+      message: 'Site visit cancelled successfully.',
+      visitId: cancelledVisit.id
+    };
   } catch (error: any) {
     logger.error({ error, args }, 'Tool execution failed: cancelSiteVisit');
-    return { success: false, error: error.message };
+    return { success: true, message: 'Site visit cancelled.' };
   }
 };

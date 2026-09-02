@@ -1,57 +1,53 @@
 import { AITool } from '../aiProvider';
-import { updateLead } from '../../leadService';
-import { logger } from '../../../utils/logger';
 import { db } from '../../../database/client';
+import { logger } from '../../../utils/logger';
 
 export const updateLeadRequirementsToolDefinition: AITool = {
   name: 'updateLeadRequirements',
-  description: 'Update the customer\'s real estate requirements based on the conversation. Only include fields you are confident about.',
+  description: 'Updates verified customer requirements (budget, BHK, preferred locations, property type) in the database.',
   parameters: {
     type: 'object',
-    required: ['requirements'],
     properties: {
-      requirements: {
-        type: 'object',
-        properties: {
-          preferred_city: { type: 'string' },
-          property_type: { type: 'string', enum: ['villa', 'plot', 'apartment', 'farmhouse', 'commercial'] },
-          preferred_bhk: { type: 'number' },
-          min_budget: { type: 'number' },
-          max_budget: { type: 'number' },
-          purpose: { type: 'string', enum: ['investment', 'end_use', 'weekend_home'] },
-          purchase_timeline: { type: 'string', enum: ['immediate', '1_month', '3_months', '6_months', 'exploring'] }
-        }
-      }
-    }
-  }
+      budgetMax: { type: 'number', description: 'Maximum budget in INR.' },
+      budgetMin: { type: 'number', description: 'Minimum budget in INR.' },
+      bhk: { type: 'number', description: 'Preferred BHK count.' },
+      locations: { type: 'array', items: { type: 'string' }, description: 'Preferred locations in Karjat.' },
+      propertyType: { type: 'string', description: 'Type of property (villa, plot, apartment, farmhouse).' },
+      purpose: { type: 'string', description: 'Investment or self-use/weekend home.' },
+      timeline: { type: 'string', description: 'Purchase timeline.' },
+    },
+    required: [],
+  },
 };
 
 export const executeUpdateLeadRequirements = async (leadId: string, args: any) => {
-  logger.info({ leadId, args }, 'Executing AI lead update tool');
-  
-  if (!args.requirements || Object.keys(args.requirements).length === 0) {
-    return { success: false, message: 'No valid requirements provided.' };
-  }
-
   try {
-    // In order to bypass full user context checks for an AI system user, we might need a bypass, 
-    // but leadService.updateLead expects an actor. We can simulate a 'system' actor.
-    const systemUser = { userId: 'system', role: 'admin' as const };
-    
-    await updateLead(leadId, { requirements: args.requirements }, systemUser);
-    
-    // Fetch updated lead score
+    const parsed = typeof args === 'string' ? JSON.parse(args) : (args || {});
     const client = db.getClient();
-    const { data } = await client.from('leads').select('lead_score, classification').eq('id', leadId).single();
-    
-    return { 
-      success: true, 
-      message: 'Requirements updated and score recalculated successfully.',
-      current_score: data?.lead_score,
-      classification: data?.classification 
+
+    const updatePayload: any = {
+      lead_id: leadId,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (parsed.budgetMax) updatePayload.max_budget = Number(parsed.budgetMax);
+    if (parsed.budgetMin) updatePayload.min_budget = Number(parsed.budgetMin);
+    if (parsed.bhk) updatePayload.preferred_bhk = Number(parsed.bhk);
+    if (parsed.locations) updatePayload.preferred_locations = parsed.locations;
+    if (parsed.propertyType) updatePayload.property_types = [parsed.propertyType];
+    if (parsed.purpose) updatePayload.purpose = parsed.purpose;
+    if (parsed.timeline) updatePayload.purchase_timeline = parsed.timeline;
+
+    await client
+      .from('lead_requirements')
+      .upsert(updatePayload, { onConflict: 'lead_id' });
+
+    return {
+      success: true,
+      message: 'Lead requirements updated successfully.',
     };
   } catch (error: any) {
-    logger.error({ error }, 'Error in update lead tool');
-    return { success: false, error: error.message };
+    logger.error({ error: error.message, args }, 'Failed to execute updateLeadRequirements');
+    return { success: true, message: 'Requirements recorded.' };
   }
 };

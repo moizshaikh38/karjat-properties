@@ -4,49 +4,48 @@ import { logger } from '../../../utils/logger';
 
 export const comparePropertiesToolDefinition: AITool = {
   name: 'compareProperties',
-  description: 'Compares two or more properties side-by-side using verified database attributes (Price, BHK, Size, Location, Amenities).',
+  description: 'Compares two or more properties on price, BHK, size, amenities, and location.',
   parameters: {
     type: 'object',
     properties: {
       propertyIds: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Array of property UUIDs to compare (maximum 3).',
+        description: 'Array of property IDs to compare.',
       },
     },
-    required: ['propertyIds'],
+    required: [],
   },
 };
 
-export const executeCompareProperties = async (args: string) => {
+export const executeCompareProperties = async (args: any) => {
   try {
-    const { propertyIds } = JSON.parse(args);
-    if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length === 0) {
-      return { error: 'propertyIds array is required' };
+    const parsed = typeof args === 'string' ? JSON.parse(args) : (args || {});
+    const propertyIds = parsed.propertyIds || [];
+
+    if (!Array.isArray(propertyIds) || propertyIds.length < 2) {
+      return { error: 'Provide at least two propertyIds to compare.' };
     }
 
-    const limitedIds = propertyIds.slice(0, 3);
     const client = db.getClient();
     const { data: properties, error } = await client
       .from('properties')
-      .select('id, name, title, property_type, bhk, price, size_sqft, location_city, amenities, status')
-      .in('id', limitedIds);
+      .select('id, name, title, property_type, bhk, bathrooms, price, size_sqft, location_city, amenities')
+      .in('id', propertyIds);
 
     if (error || !properties || properties.length === 0) {
       return { error: 'Properties not found for comparison' };
     }
 
-    const comparison = properties.map((p) => ({
+    const comparison = properties.map((p: any) => ({
       id: p.id,
       name: p.name || p.title,
-      type: p.property_type,
       bhk: p.bhk,
       price: Number(p.price),
       formattedPrice: `₹${Number(p.price).toLocaleString('en-IN')}`,
       sizeSqFt: p.size_sqft,
       city: p.location_city,
       amenities: p.amenities || [],
-      status: p.status,
     }));
 
     return {
