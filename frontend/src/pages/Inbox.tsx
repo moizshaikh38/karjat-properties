@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bot, User, Clock, MessageSquare, Plus, Sparkles } from 'lucide-react';
+import { Search, Bot, User, Clock, MessageSquare, Plus, Sparkles, Radio } from 'lucide-react';
 import api from '../services/api';
 import { Conversation, Lead } from '../types';
 import ChatWindow from '../components/ChatWindow';
@@ -22,24 +22,31 @@ export default function Inbox() {
       const raw = res.data?.data;
       const dbList: any[] = Array.isArray(raw) ? raw : raw?.conversations || [];
       
-      // Keep all real database conversations
+      // Process real database conversations
       const realDbList = dbList.map((c: any) => ({
         ...c,
+        isLiveReal: true,
         lead: c.lead || {
-          name: c.whatsapp_phone,
+          name: c.whatsapp_phone || 'WhatsApp Prospect',
           phone: c.whatsapp_phone,
-          classification: 'WARM',
-          temperature: 'WARM',
+          classification: 'HOT',
+          temperature: 'HOT',
           status: 'discovery'
         }
       }));
 
-      // Combine real DB conversations (at the top) + DEMO_CONVERSATIONS
-      const realIds = new Set(realDbList.map((c: any) => c.id));
-      const filteredDemo = DEMO_CONVERSATIONS.filter(d => !realIds.has(d.id));
-      
-      const allConversations = [...realDbList, ...filteredDemo];
-      setConversations(allConversations as any);
+      // Merge DEMO_CONVERSATIONS (always keep all 6 demo chats available)
+      const realPhoneSet = new Set(realDbList.map((c: any) => c.whatsapp_phone?.replace(/\D/g, '')));
+      const realIdSet = new Set(realDbList.map((c: any) => c.id));
+
+      const cleanDemo = DEMO_CONVERSATIONS.filter(d => {
+        const dCleanPhone = d.whatsapp_phone?.replace(/\D/g, '');
+        return !realPhoneSet.has(dCleanPhone) && !realIdSet.has(d.id);
+      }).map(d => ({ ...d, isDemo: true }));
+
+      // Combined list: Live real customer chats + curated demo showcase chats
+      const allMerged = [...realDbList, ...cleanDemo];
+      setConversations(allMerged as any);
     } catch (err) {
       setConversations(DEMO_CONVERSATIONS as any);
     }
@@ -47,7 +54,7 @@ export default function Inbox() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 3000);
+    const interval = setInterval(fetchConversations, 2000);
     return () => clearInterval(interval);
   }, []);
 
@@ -89,7 +96,7 @@ export default function Inbox() {
               <h2 className="text-[14px] font-semibold text-[var(--color-text)] tracking-tight">WhatsApp Chats</h2>
             </div>
             <span className="text-[11px] text-[var(--color-text-muted)] font-mono tabular-nums">
-              {filteredConversations.length} Threads
+              {filteredConversations.length} Active
             </span>
           </div>
 
@@ -134,6 +141,7 @@ export default function Inbox() {
               const isSelected = currentConvId === conv.id;
               const isHot = lead.classification === 'HOT' || lead.temperature === 'HOT';
               const isWarm = lead.classification === 'WARM' || lead.temperature === 'WARM';
+              const isLive = (conv as any).isLiveReal;
               
               const lastMsgObj = (conv as any).lastMessage || (conv as any).messages?.[(conv as any).messages?.length - 1];
               const lastText = lastMsgObj?.text_content || 'Active WhatsApp conversation';
@@ -149,9 +157,14 @@ export default function Inbox() {
                   }`}
                 >
                   <div className="flex justify-between items-start gap-2 mb-1">
-                    <span className="font-medium text-[13px] text-[var(--color-text)] truncate">
-                      {lead.name || conv.whatsapp_phone}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0 truncate">
+                      {isLive && (
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" title="Live Customer" />
+                      )}
+                      <span className="font-medium text-[13px] text-[var(--color-text)] truncate">
+                        {lead.name || conv.whatsapp_phone}
+                      </span>
+                    </div>
                     <span className="text-[10px] text-[var(--color-text-muted)] whitespace-nowrap font-mono tabular-nums">
                       {conv.last_message_at 
                         ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: false }) 
@@ -164,9 +177,9 @@ export default function Inbox() {
                   </p>
 
                   <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] font-mono">
-                    <span>{conv.whatsapp_phone}</span>
+                    <span className="text-[11px]">{conv.whatsapp_phone}</span>
                     <Badge variant={isHot ? 'hot' : isWarm ? 'warm' : 'cold'} size="sm">
-                      {isHot ? 'Hot Lead' : isWarm ? 'Warm' : 'Cold'}
+                      {isLive ? 'Live Lead' : (isHot ? 'Hot Lead' : 'Warm Lead')}
                     </Badge>
                   </div>
 
