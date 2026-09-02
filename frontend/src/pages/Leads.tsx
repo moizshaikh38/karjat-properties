@@ -212,9 +212,44 @@ export default function Leads() {
         </div>
       </div>
 
-      {/* DENSE SPREADSHEET TABLE */}
-      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
-        <div className="overflow-x-auto">
+      {/* MOBILE HIGH-DENSITY CARD VIEW (Visible on screens < 640px) */}
+      <div className="block sm:hidden space-y-2.5 mb-4">
+        {filteredLeads.map((lead) => {
+          const isHot = lead.classification === 'HOT' || lead.temperature === 'HOT';
+          const isWarm = lead.classification === 'WARM' || lead.temperature === 'WARM';
+
+          return (
+            <div
+              key={lead.id}
+              onClick={() => setSelectedLeadId(lead.id)}
+              className="luxury-card p-3.5 rounded-[6px] border border-[var(--color-border)] space-y-2 active:scale-[0.99] transition-transform cursor-pointer"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-medium text-[14px] text-[var(--color-text)]">
+                    {lead.name || 'Karjat Prospect'}
+                  </h3>
+                  <span className="font-mono text-[11.5px] text-[var(--color-text-muted)]">
+                    {lead.phone}
+                  </span>
+                </div>
+                <Badge variant={isHot ? 'hot' : isWarm ? 'warm' : 'cold'}>
+                  {isHot ? 'Hot' : isWarm ? 'Warm' : 'Cold'}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted)] pt-2 border-t border-[var(--color-border)]">
+                <span className="capitalize">{lead.status?.replace(/_/g, ' ') || 'New'}</span>
+                <span className="font-mono text-[var(--color-accent)] font-medium">Score: {lead.lead_score || 0}/100</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP DENSE SPREADSHEET TABLE (Hidden on mobile) */}
+      <div className="hidden sm:flex flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-[13px] border-collapse">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">
@@ -283,7 +318,7 @@ export default function Leads() {
                             e.stopPropagation();
                             setSelectedLeadId(lead.id);
                           }}
-                          className="text-[12px] font-medium text-[var(--color-accent)] hover:underline"
+                          className="text-[12px] font-medium text-[var(--color-accent)] hover:underline cursor-pointer"
                         >
                           View Details
                         </button>

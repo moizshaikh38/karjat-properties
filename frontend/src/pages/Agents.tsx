@@ -147,9 +147,45 @@ export default function Agents() {
         </div>
       </div>
 
-      {/* DENSE TEAM TABLE */}
-      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
-        <div className="overflow-x-auto">
+      {/* MOBILE TEAM CARDS (Visible on screens < 640px) */}
+      <div className="block sm:hidden space-y-2.5 mb-4">
+        {team.map(m => (
+          <div
+            key={m.id}
+            className="luxury-card p-3.5 rounded-[6px] border border-[var(--color-border)] space-y-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="font-medium text-[14px] text-[var(--color-text)]">
+                  {m.name}
+                </h3>
+                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                  {m.email}
+                </span>
+              </div>
+              <Badge variant={m.role === 'admin' ? 'primary' : m.role === 'manager' ? 'warm' : 'default'}>
+                {m.role?.toUpperCase() || 'AGENT'}
+              </Badge>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-[var(--color-border)] text-[11.5px]">
+              <span className="text-[var(--color-success)] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]"></span> Active
+              </span>
+              <button
+                onClick={() => handleOpenEdit(m)}
+                className="text-[var(--color-accent)] font-medium cursor-pointer"
+              >
+                Edit Role
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP DENSE TEAM TABLE (Hidden on mobile) */}
+      <div className="hidden sm:flex flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-[13px] border-collapse">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">

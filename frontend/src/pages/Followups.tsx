@@ -107,9 +107,45 @@ export default function Followups() {
         ))}
       </div>
 
-      {/* DENSE TABLE */}
-      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
-        <div className="overflow-x-auto">
+      {/* MOBILE FOLLOW-UP CARDS (Visible on screens < 640px) */}
+      <div className="block sm:hidden space-y-2.5 mb-4">
+        {filteredFollowups.map(f => {
+          const date = f.scheduled_at ? new Date(f.scheduled_at) : null;
+          const isOverdue = date && isPast(date) && f.status === 'pending';
+
+          return (
+            <div
+              key={f.id}
+              className="luxury-card p-3.5 rounded-[6px] border border-[var(--color-border)] space-y-2"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-medium text-[14px] text-[var(--color-text)]">
+                    {f.lead?.name || 'Prospect'}
+                  </h3>
+                  <span className="font-mono text-[11.5px] text-[var(--color-text-muted)]">
+                    {f.lead?.phone}
+                  </span>
+                </div>
+                <Badge variant={isOverdue ? 'hot' : f.status === 'completed' || f.status === 'sent' ? 'success' : 'warm'}>
+                  {isOverdue ? 'Overdue' : f.status}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-[12px] pt-1 text-[var(--color-text-muted)]">
+                <span className="capitalize text-[var(--color-text)]">{f.followup_type?.replace(/_/g, ' ')}</span>
+                <span className={`font-mono tabular-nums ${isOverdue ? 'text-[var(--color-status-hot)] font-medium' : ''}`}>
+                  {date ? format(date, 'MMM d · hh:mm a') : 'Pending'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP DENSE TABLE (Hidden on mobile) */}
+      <div className="hidden sm:flex flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-[13px] border-collapse">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">

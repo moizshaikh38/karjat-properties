@@ -20,12 +20,14 @@
 }
 
 @layer base {
-  /* Million Dollar Real Estate CRM: Deep Obsidian & Western Ghats Pine */
+  /* Million Dollar Luxury Real Estate CRM: Deep Obsidian & Western Ghats Pine */
   :root {
-    --color-bg: #0b0f17;
-    --color-surface: #121824;
-    --color-surface-elevated: #182030;
-    --color-border: #222d3e;
+    --color-bg: #090d14;
+    --color-surface: #101622;
+    --color-surface-elevated: #161e2e;
+    --color-surface-card: #131a29;
+    --color-border: #1f293d;
+    --color-border-subtle: #172033;
     --color-text: #f8fafc;
     --color-text-muted: #94a3b8;
     --color-primary: #0d766e;
@@ -33,70 +35,91 @@
     --color-accent: #0d766e;
     --color-accent-hover: #14b8a6;
     --color-gold: #d4af37;
+    --color-gold-muted: #e5c07b;
     --color-status-hot: #e06c75;
     --color-status-warm: #e5c07b;
     --color-status-cold: #64748b;
     --color-success: #10b981;
     --color-warning: #e5c07b;
     --color-danger: #e06c75;
-    --color-info: #60a5fa;
+    --color-info: #38bdf8;
   }
 
-  /* Light Mode (Warm Architectural Limestone Paper) */
+  /* Light Mode (Limestone Editorial Paper) */
   .light {
     --color-bg: #f8f7f4;
     --color-surface: #ffffff;
     --color-surface-elevated: #f1eee7;
-    --color-border: #e3ded5;
-    --color-text: #111827;
+    --color-surface-card: #fcfbfa;
+    --color-border: #e2ddd4;
+    --color-border-subtle: #eae5dc;
+    --color-text: #0f172a;
     --color-text-muted: #64748b;
     --color-primary: #0d766e;
     --color-primary-hover: #09534e;
     --color-accent: #0d766e;
     --color-accent-hover: #09534e;
     --color-gold: #b8860b;
+    --color-gold-muted: #b8860b;
     --color-status-hot: #cf4f58;
     --color-status-warm: #b8860b;
     --color-status-cold: #64748b;
     --color-success: #059669;
     --color-warning: #d97706;
     --color-danger: #dc2626;
-    --color-info: #2563eb;
+    --color-info: #0284c7;
   }
 
   * {
     border-color: var(--color-border);
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
   }
 
-  body {
+  html, body {
     background-color: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-sans);
     letter-spacing: -0.015em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
   }
 
-  /* Structural hairline card depth */
-  .crm-card {
-    background-color: var(--color-surface);
+  /* Touch momentum scroll for horizontal chips & tables */
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Hide scrollbar utility */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Structural luxury card */
+  .luxury-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%), var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.15);
   }
 
-  /* Minimal scrollbar */
+  /* Minimal custom scrollbar for desktop */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 4px;
+    height: 4px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
     background: var(--color-border);
-    border-radius: 3px;
+    border-radius: 2px;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-muted);
@@ -107,11 +130,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Subtle entrance animation */
-@keyframes countUpFade {
+/* Smooth micro-animations */
+@keyframes slideUpFade {
   from {
     opacity: 0;
-    transform: translateY(3px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -120,5 +143,14 @@
 }
 
 .animate-entrance {
-  animation: countUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Safe area insets for mobile */
+.pb-safe {
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }

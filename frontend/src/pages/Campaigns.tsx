@@ -82,9 +82,37 @@ export default function Campaigns() {
         </div>
       </div>
 
-      {/* DENSE TABLE */}
-      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
-        <div className="overflow-x-auto">
+      {/* MOBILE CAMPAIGN CARDS (Visible on screens < 640px) */}
+      <div className="block sm:hidden space-y-2.5 mb-4">
+        {campaigns.map(c => (
+          <div
+            key={c.id}
+            className="luxury-card p-3.5 rounded-[6px] border border-[var(--color-border)] space-y-2"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="font-medium font-display text-[15px] text-[var(--color-text)]">
+                  {c.name}
+                </h3>
+                <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                  {c.template_name || 'project_launch'}
+                </span>
+              </div>
+              <Badge variant={c.status === 'sent' ? 'success' : c.status === 'sending' ? 'warm' : 'default'}>
+                {c.status || 'Draft'}
+              </Badge>
+            </div>
+
+            <div className="p-2 bg-[var(--color-surface-elevated)]/60 rounded-[4px] border border-[var(--color-border)] text-[11.5px] font-mono tabular-nums text-[var(--color-text-muted)]">
+              <span className="text-[var(--color-text)]">{c.sent_count || 0}</span> sent · <span className="text-[var(--color-accent)]">{c.delivered_count || 0}</span> deliv · <span className="text-[var(--color-status-warm)]">{c.read_count || 0}</span> read
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP DENSE TABLE (Hidden on mobile) */}
+      <div className="hidden sm:flex flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-[13px] border-collapse">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">

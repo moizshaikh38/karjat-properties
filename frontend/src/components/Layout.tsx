@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, Inbox, Users, Map, Building2, 
+  LayoutDashboard, Inbox, Users, Building2, 
   Calendar, PhoneCall, Megaphone, FileText, 
   Bot, Zap, BarChart3, Users2, Settings, 
   LogOut, Search, Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Plus, Layers
@@ -27,7 +27,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, badge, collaps
     className={({ isActive }) => `
       flex items-center px-2.5 py-1.5 rounded-[6px] transition-all group relative select-none
       ${isActive 
-        ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-medium border border-[var(--color-border)] shadow-[0_1px_2px_0_rgba(0,0,0,0.15)]' 
+        ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-medium border border-[var(--color-border)] shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]' 
         : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)]/50 border border-transparent'
       }
     `}
@@ -50,7 +50,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, badge, collaps
 const NavSection: React.FC<{ title: string; collapsed: boolean; children: React.ReactNode }> = ({ title, collapsed, children }) => (
   <div className="space-y-0.5 pt-3 first:pt-0">
     {!collapsed && (
-      <div className="px-2.5 pb-1 text-[10.5px] font-medium text-[var(--color-text-muted)]/70 uppercase tracking-wider">
+      <div className="px-2.5 pb-1 text-[10px] font-medium text-[var(--color-text-muted)]/70 uppercase tracking-wider">
         {title}
       </div>
     )}
@@ -89,36 +89,37 @@ export const Layout: React.FC = () => {
     <div className="min-h-screen bg-[var(--color-bg)] flex flex-col md:flex-row overflow-hidden font-sans text-[var(--color-text)]">
       <CommandPalette />
       
-      {/* MOBILE TOP BAR (High Precision & Fast Touch) */}
-      <header className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-30">
+      {/* MOBILE TOP BAR (Glassmorphism & Fast Touch) */}
+      <header className="md:hidden flex items-center justify-between px-3.5 py-2.5 bg-[var(--color-surface)]/90 backdrop-blur-md border-b border-[var(--color-border)] sticky top-0 z-30 pt-safe">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-[4px] bg-[var(--color-accent)] flex items-center justify-center text-white">
+          <div className="w-7 h-7 rounded-[4px] bg-[var(--color-accent)] flex items-center justify-center text-white shadow-xs">
             <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <span className="font-semibold text-[13px] text-[var(--color-text)] tracking-tight block font-display">
+            <span className="font-semibold text-[13.5px] text-[var(--color-text)] tracking-tight block font-display">
               Karjat Properties
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button 
             onClick={triggerSearch} 
-            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px]"
+            className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px] cursor-pointer"
             title="Search"
           >
             <Search className="h-4 w-4" />
           </button>
           <button 
             onClick={toggleTheme} 
-            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px]"
+            className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px] cursor-pointer"
             title="Toggle theme"
           >
             {isDark ? <Sun className="h-4 w-4 text-[var(--color-status-warm)]" /> : <Moon className="h-4 w-4" />}
           </button>
           <button 
             onClick={() => setMobileMenuOpen(true)} 
-            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px]"
+            className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px] cursor-pointer"
+            aria-label="Open menu"
           >
             <Menu className="h-4 w-4" />
           </button>
@@ -242,45 +243,48 @@ export const Layout: React.FC = () => {
           </div>
         </header>
 
-        {/* Content View */}
-        <div className="flex-1 overflow-y-auto pb-16 md:pb-0 relative hide-scrollbar">
+        {/* Content View with Mobile Safe Area Padding */}
+        <div className="flex-1 overflow-y-auto pb-safe md:pb-0 relative hide-scrollbar">
           <Outlet />
         </div>
       </main>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[var(--color-surface)] border-t border-[var(--color-border)] flex justify-around items-center px-1 py-1.5 z-40">
+      {/* MOBILE BOTTOM NAVIGATION BAR (Frosted Glass & Safe Touch) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[var(--color-surface)]/90 backdrop-blur-lg border-t border-[var(--color-border)] flex justify-around items-center px-1 py-1 z-40 pb-[calc(0.25rem+env(safe-area-inset-bottom,0px))]">
         <NavLink 
           to="/dashboard" 
-          className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
+          className={({isActive}) => `flex flex-col items-center py-1.5 px-3 rounded-[6px] transition-colors relative ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
           <LayoutDashboard className="h-4 w-4" />
           <span className="text-[10px] mt-0.5">Overview</span>
         </NavLink>
         <NavLink 
           to="/inbox" 
-          className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
+          className={({isActive}) => `flex flex-col items-center py-1.5 px-3 rounded-[6px] transition-colors relative ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
-          <Inbox className="h-4 w-4" />
+          <div className="relative">
+            <Inbox className="h-4 w-4" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[var(--color-accent)]"></span>
+          </div>
           <span className="text-[10px] mt-0.5">Inbox</span>
         </NavLink>
         <NavLink 
           to="/properties" 
-          className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
+          className={({isActive}) => `flex flex-col items-center py-1.5 px-3 rounded-[6px] transition-colors relative ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
           <Building2 className="h-4 w-4" />
           <span className="text-[10px] mt-0.5">Properties</span>
         </NavLink>
         <NavLink 
           to="/leads" 
-          className={({isActive}) => `flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
+          className={({isActive}) => `flex flex-col items-center py-1.5 px-3 rounded-[6px] transition-colors relative ${isActive ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
           <Users className="h-4 w-4" />
           <span className="text-[10px] mt-0.5">Leads</span>
         </NavLink>
         <button 
           onClick={() => setMobileMenuOpen(true)}
-          className={`flex flex-col items-center py-1 px-2.5 rounded-[4px] transition-colors ${mobileMenuOpen ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
+          className={`flex flex-col items-center py-1.5 px-3 rounded-[6px] transition-colors cursor-pointer ${mobileMenuOpen ? 'text-[var(--color-accent)] font-semibold' : 'text-[var(--color-text-muted)]'}`}
         >
           <Menu className="h-4 w-4" />
           <span className="text-[10px] mt-0.5">More</span>
@@ -290,18 +294,18 @@ export const Layout: React.FC = () => {
       {/* MOBILE SLIDE-OVER DRAWER (Full Access Hub) */}
       {mobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 z-50 bg-black/65 backdrop-blur-[2px] flex justify-end animate-in fade-in"
+          className="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex justify-end animate-in fade-in"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div 
             className="w-4/5 max-w-xs bg-[var(--color-surface)] h-full flex flex-col border-l border-[var(--color-border)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
-              <span className="font-semibold text-[13px] text-[var(--color-text)] font-display">Karjat Properties</span>
+            <div className="p-3.5 border-b border-[var(--color-border)] flex items-center justify-between">
+              <span className="font-semibold text-[13.5px] text-[var(--color-text)] font-display">Karjat Properties</span>
               <button 
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px]"
+                className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-[4px] cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -335,12 +339,12 @@ export const Layout: React.FC = () => {
               </NavSection>
             </div>
 
-            <div className="p-3 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)] space-y-2">
+            <div className="p-3.5 border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)] space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] text-[var(--color-text-muted)] truncate">{user?.email || 'admin@karjatproperties.com'}</span>
                 <button
                   onClick={toggleTheme}
-                  className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)] cursor-pointer"
                 >
                   {isDark ? <Sun className="h-3.5 w-3.5 text-[var(--color-status-warm)]" /> : <Moon className="h-3.5 w-3.5" />}
                 </button>
@@ -348,7 +352,7 @@ export const Layout: React.FC = () => {
 
               <button
                 onClick={handleLogout}
-                className="w-full py-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-status-hot)] text-[12px] font-medium rounded-[4px] flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-status-hot)] text-[12px] font-medium rounded-[4px] flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" /> Sign out
               </button>

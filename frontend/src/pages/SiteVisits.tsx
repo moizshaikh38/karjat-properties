@@ -111,9 +111,77 @@ export default function SiteVisits() {
         ))}
       </div>
 
-      {/* DENSE VISITS TABLE */}
-      <div className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
-        <div className="overflow-x-auto">
+      {/* MOBILE SITE VISIT CARDS (Visible on screens < 640px) */}
+      <div className="block sm:hidden space-y-2.5 mb-4">
+        {filteredVisits.map(visit => {
+          const visitDate = visit.scheduled_date ? new Date(visit.scheduled_date) : null;
+
+          return (
+            <div
+              key={visit.id}
+              className="luxury-card p-3.5 rounded-[6px] border border-[var(--color-border)] space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-medium text-[14px] text-[var(--color-text)]">
+                    {visit.lead?.name || 'Customer'}
+                  </h3>
+                  <span className="font-mono text-[11.5px] text-[var(--color-text-muted)]">
+                    {visit.lead?.phone}
+                  </span>
+                </div>
+                <Badge 
+                  variant={
+                    visit.status === 'completed' ? 'success' :
+                    visit.status === 'scheduled' ? 'warm' :
+                    visit.status === 'requested' ? 'hot' : 'cold'
+                  }
+                >
+                  {visit.status || 'Requested'}
+                </Badge>
+              </div>
+
+              <div className="p-2 bg-[var(--color-surface-elevated)]/60 rounded-[4px] border border-[var(--color-border)] text-[12px]">
+                <span className="font-medium font-display text-[var(--color-accent)] block truncate">
+                  {visit.property?.name || 'Karjat Villa Project'}
+                </span>
+                <span className="text-[11px] text-[var(--color-text-muted)] block mt-0.5 font-mono">
+                  {visitDate ? format(visitDate, 'EEE, MMM d · hh:mm a') : 'Weekend Slot TBD'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--color-border)]">
+                <span className="text-[11px] text-[var(--color-text-muted)] truncate">
+                  {visit.agent_notes || 'Self-drive direct to site'}
+                </span>
+
+                <div className="flex gap-1.5 flex-shrink-0">
+                  {visit.status === 'requested' && (
+                    <button
+                      onClick={() => handleAction(visit.id, 'schedule')}
+                      className="px-2.5 py-1 bg-[var(--color-accent)] text-white rounded-[4px] text-[11px] font-medium cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                  )}
+                  {visit.status === 'scheduled' && (
+                    <button
+                      onClick={() => handleAction(visit.id, 'complete')}
+                      className="px-2.5 py-1 bg-[var(--color-surface-elevated)] text-[var(--color-text)] border border-[var(--color-border)] rounded-[4px] text-[11px] font-medium cursor-pointer"
+                    >
+                      Complete
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP DENSE VISITS TABLE (Hidden on mobile) */}
+      <div className="hidden sm:flex flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] overflow-hidden shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-[13px] border-collapse">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 text-[11px] font-medium text-[var(--color-text-muted)]">

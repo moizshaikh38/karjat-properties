@@ -78,15 +78,15 @@ export default function Pipeline() {
         </div>
       </div>
 
-      {/* KANBAN BOARD */}
-      <div className="flex-1 overflow-x-auto pb-4 hide-scrollbar">
+      {/* KANBAN BOARD (Touch-Scroll & Snap on Mobile) */}
+      <div className="flex-1 overflow-x-auto pb-4 hide-scrollbar touch-scroll snap-x snap-mandatory">
         <div className="flex gap-3.5 h-full min-w-max items-start">
           {STAGES.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             return (
               <div 
                 key={stage.id} 
-                className="w-72 flex flex-col bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] shadow-[0_1px_2px_0_rgba(0,0,0,0.2)]"
+                className="w-72 sm:w-76 flex flex-col bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[6px] shadow-[0_1px_2px_0_rgba(0,0,0,0.2)] snap-start"
               >
                 {/* Column Header */}
                 <div className="px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/50 flex justify-between items-center rounded-t-[6px]">
