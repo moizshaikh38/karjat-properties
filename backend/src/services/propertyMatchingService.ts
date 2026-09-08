@@ -168,55 +168,33 @@ const VERIFIED_KARJAT_PROPERTIES = [
   }
 ];
 
-export const findMatchingProperties = async (leadId: string, options: MatchingOptions = { limit: 3, minScore: 50 }) => {
-  const searchStart = Date.now();
-  logger.info({ leadId }, '[PERF] PROPERTY_SEARCH_START');
-  
-  const client = db.getClient();
-  
-  // 1. Get Requirements from DB if available
-  let req: any = null;
-  try {
-    const { data: leadReq } = await client
-      .from('lead_requirements')
-      .select('*')
-      .eq('lead_id', leadId)
-      .single();
-    req = leadReq;
-  } catch (err) {
-    // Lead requirement optional, fallback to arguments
+// In-memory cache for available properties
+let cachedProperties: any[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+export const invalidatePropertiesCache = () => {
+  cachedProperties = null;
+  cacheTimestamp = 0;
+  logger.debug('Active properties cache invalidated');
+};
+
+export const getCachedOrFetchProperties = async (): Promise<any[]> => {
+  const now = Date.now();
+  if (cachedProperties && (now - cacheTimestamp < CACHE_TTL_MS)) {
+    return cachedProperties;
   }
 
-  // Merge direct options passed into the function (e.g. from searchProperties tool call)
-  const effectiveReq = {
-    max_budget: options.max_price || options.budget || req?.max_budget,
-    min_budget: options.min_price || req?.min_budget,
-    preferred_bhk: options.bhk || req?.preferred_bhk,
-    preferred_locations: options.location ? [options.location] : req?.preferred_locations,
-    property_types: options.property_type ? [options.property_type] : req?.property_types,
-  };
-
-  // 2. Fetch Active properties from DB with hard filters pushed to Postgres
-  let properties: any[] = [];
+  const client = db.getClient();
   try {
-    let query = client
+    const { data, error } = await client
       .from('properties')
       .select('id, title, name, location, city, price, bhk, property_type, size_sqft, carpet_area_sqft, plot_area_sqft, amenities, status, description, images, videos, video_metadata')
-      .in('status', ['available']);
-
-    if (effectiveReq.preferred_bhk) {
-      query = query.eq('bhk', Number(effectiveReq.preferred_bhk));
-    }
-    
-    if (effectiveReq.max_budget) {
-      // 15% buffer added to match the JS scoring logic allowance
-      query = query.lte('price', Number(effectiveReq.max_budget) * 1.15);
-    }
-
-    const { data, error } = await query.limit(50); // limit to 50 best DB candidates max
+      .in('status', ['available'])
+      .limit(100);
 
     if (!error && data && data.length > 0) {
-      properties = data.map((p: any) => ({
+      cachedProperties = data.map((p: any) => ({
         id: p.id,
         name: p.title || p.name || 'Karjat Property',
         title: p.title || p.name,
@@ -240,14 +218,65 @@ export const findMatchingProperties = async (leadId: string, options: MatchingOp
         status: p.status || 'available',
         description: p.description || ''
       }));
+      cacheTimestamp = now;
+      return cachedProperties;
     }
   } catch (err) {
     logger.warn('Failed to fetch from DB properties, falling back to verified inventory');
   }
 
-  // If DB properties is empty or unavailable, use verified Karjat inventory
-  if (properties.length === 0) {
-    properties = [...VERIFIED_KARJAT_PROPERTIES];
+  if (cachedProperties && cachedProperties.length > 0) {
+    return cachedProperties;
+  }
+
+  return [...VERIFIED_KARJAT_PROPERTIES];
+};
+
+export const findMatchingProperties = async (
+  leadId: string,
+  options: MatchingOptions & { existingRequirements?: any } = { limit: 3, minScore: 50 }
+) => {
+  const searchStart = Date.now();
+  logger.info({ leadId }, '[PERF] PROPERTY_SEARCH_START');
+  
+  const client = db.getClient();
+  
+  // 1. Get Requirements from passed memory or DB fallback
+  let req: any = options.existingRequirements || null;
+  if (!req && leadId) {
+    try {
+      const { data: leadReq } = await client
+        .from('lead_requirements')
+        .select('*')
+        .eq('lead_id', leadId)
+        .single();
+      req = leadReq;
+    } catch (err) {
+      // Lead requirement optional, fallback to arguments
+    }
+  }
+
+  // Merge direct options passed into the function (e.g. from searchProperties tool call)
+  const effectiveReq = {
+    max_budget: options.max_price || options.budget || req?.max_budget,
+    min_budget: options.min_price || req?.min_budget,
+    preferred_bhk: options.bhk || req?.preferred_bhk,
+    preferred_locations: options.location ? [options.location] : req?.preferred_locations,
+    property_types: options.property_type ? [options.property_type] : req?.property_types,
+  };
+
+  // 2. Fetch Active properties from in-memory cache (instant <1ms response)
+  const allAvailable = await getCachedOrFetchProperties();
+  let properties = [...allAvailable];
+
+  if (effectiveReq.preferred_bhk) {
+    const bhkFiltered = properties.filter(p => Number(p.bhk) === Number(effectiveReq.preferred_bhk));
+    if (bhkFiltered.length > 0) properties = bhkFiltered;
+  }
+
+  if (effectiveReq.max_budget) {
+    const budgetFiltered = properties.filter(p => Number(p.price) <= Number(effectiveReq.max_budget) * 1.15);
+    if (budgetFiltered.length > 0) properties = budgetFiltered;
   }
 
   const scoredProperties = properties

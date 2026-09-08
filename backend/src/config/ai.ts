@@ -9,9 +9,9 @@ const aiEnvSchema = z.object({
   AI_PROVIDER: z.string().default('openrouter'),
   AI_API_KEY: z.string().optional(),
   AI_BASE_URL: z.string().default('https://openrouter.ai/api/v1'),
-  AI_MODEL: z.string().default('openai/gpt-4o'),
+  AI_MODEL: z.string().default('google/gemini-2.5-flash'),
   AI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.2),
-  AI_MAX_TOKENS: z.coerce.number().int().positive().default(500),
+  AI_MAX_TOKENS: z.coerce.number().int().positive().default(350),
   AI_CONTEXT_MESSAGES: z.coerce.number().int().positive().default(10),
   AI_MAX_CONSECUTIVE_FAILURES: z.coerce.number().int().positive().default(3),
 });

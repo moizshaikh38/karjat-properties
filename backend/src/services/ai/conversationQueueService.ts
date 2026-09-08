@@ -12,7 +12,7 @@ export const enqueueConversationForAI = (conversationId: string) => {
     logger.debug({ conversationId }, 'Debounced AI processing (message buffered)');
   }
 
-  // Set new timer for 2.5 seconds to buffer fast incoming customer messages
+  // Set new timer for 200ms to buffer fast incoming customer messages without sluggish delay
   debounceTimers[conversationId] = setTimeout(async () => {
     delete debounceTimers[conversationId];
 
@@ -24,7 +24,7 @@ export const enqueueConversationForAI = (conversationId: string) => {
     }
 
     await executeLockedRun(conversationId);
-  }, 500);
+  }, 200);
 };
 
 const executeLockedRun = async (conversationId: string) => {
@@ -44,7 +44,7 @@ const executeLockedRun = async (conversationId: string) => {
       pendingRuns[conversationId] = false;
       setTimeout(() => {
         executeLockedRun(conversationId);
-      }, 1000);
+      }, 500);
     }
   }
 };

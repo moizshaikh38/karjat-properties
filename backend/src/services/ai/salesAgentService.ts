@@ -67,7 +67,7 @@ export class SalesAgentService {
         return;
       }
 
-      // 2. Assemble Full Lead & Conversation Context
+      // 2. Assemble Full Lead & Conversation Context (in parallel)
       const ctx = await buildFullContext(conversationId);
       if (ctx.messages.length === 0) return;
 
@@ -77,28 +77,24 @@ export class SalesAgentService {
         .map((m) => m.content)
         .join('\n');
 
-      // 3. Extract Requirements Asynchronously
+      // 2. Extract Requirements Asynchronously
       extractRequirements(latestIncoming)
         .then((extracted) => {
           if (extracted) updateLeadRequirementsWithExtraction(ctx.lead.id, extracted);
         })
         .catch((e) => logger.error(e));
 
-      // 4. Multi-Intent Classification (Non-Blocking)
-      // We fire this asynchronously so it doesn't block the main AI response generation.
+      // 3. Multi-Intent Classification (Non-Blocking)
       const intents = ['PENDING_ANALYSIS'];
       const confidence = 0.5;
       
       detectIntents(latestIncoming)
         .then((res) => {
            logger.debug({ conversationId, intents: res.intents, confidence: res.confidence }, 'Detected customer intents (background)');
-           // Analytics or background states can use this later
         })
         .catch((e) => logger.error(e));
 
-      // 5. Short-circuit for Immediate Opt-Out
-      // Since intent detection is now non-blocking, we rely on the main LLM 
-      // or explicit tool calls to handle opt-outs.
+      // 4. Short-circuit for Immediate Opt-Out
       if (latestIncoming.toLowerCase().trim() === 'stop') {
         await executeRequestHumanAgent(conversationId, JSON.stringify({ reason: 'Customer requested opt-out explicitly' }));
         await conversationStateMachine.updateConversationState(conversationId, 'CLOSED', {
@@ -109,10 +105,10 @@ export class SalesAgentService {
         return;
       }
 
-      // 6. Compute Next Best Action & State Transition
+      // 5. Compute Next Best Action & State Transition
       const nextAction = getNextBestAction(ctx.lead as any, ctx.requirements as any, ctx.interactions as any);
 
-      const currentState = await conversationStateMachine.getConversationState(conversationId);
+      const currentState = (ctx as any).conversationState || 'NEW';
       const nextState = conversationStateMachine.determineNextState({
         currentState,
         intents,
@@ -163,14 +159,19 @@ export class SalesAgentService {
       while (iterationCount < 4) {
         iterationCount++;
 
+        // On iteration 2+, if a search/details tool was executed, omit tools so LLM immediately writes the response
+        const activeTools = iterationCount > 1 && ['searchProperties', 'getPropertyDetails', 'compareProperties'].includes(lastToolCalledName || '')
+          ? undefined
+          : tools;
+
         logger.info({ conversationId }, `[PERF] LLM_CALL_START iteration=${iterationCount}`);
         const llmStart = Date.now();
         const response = await aiProvider.generateResponse({
           systemPrompt,
           messages: conversationMessages,
-          tools,
+          tools: activeTools,
           temperature: 0.3,
-          maxTokens: 500,
+          maxTokens: 350,
         });
         logger.info({ conversationId, duration: Date.now() - llmStart }, `[PERF] LLM_CALL_END iteration=${iterationCount}`);
 
@@ -200,7 +201,7 @@ export class SalesAgentService {
             try {
               switch (call.name) {
                 case 'searchProperties':
-                  toolResult = await executePropertySearch(ctx.lead.id, call.arguments);
+                  toolResult = await executePropertySearch(ctx.lead.id, call.arguments, ctx.requirements);
                   if (toolResult?.success) {
                     if (Array.isArray(toolResult.exactMatches)) {
                       discoveredProperties.push(...toolResult.exactMatches);
@@ -284,11 +285,32 @@ export class SalesAgentService {
             
             logger.info({ conversationId, tool: call.name, duration: Date.now() - toolStart }, `[PERF] TOOL_CALL_END tool=${call.name}`);
 
+            // Provide lightweight summary for LLM prompt context to maximize generation speed
+            let promptToolContent = JSON.stringify(toolResult);
+            if (call.name === 'searchProperties' && toolResult?.success) {
+              const cleanProp = (p: any) => ({
+                id: p.id,
+                title: p.title || p.name,
+                location: p.location || p.location_city,
+                priceFormatted: p.priceFormatted,
+                bhk: p.bhk,
+                propertyType: p.propertyType,
+                carpetArea: p.carpetArea,
+                amenities: Array.isArray(p.amenities) ? p.amenities.slice(0, 4) : [],
+                highlights: p.matchReasons || []
+              });
+              promptToolContent = JSON.stringify({
+                success: true,
+                exactMatches: (toolResult.exactMatches || []).map(cleanProp),
+                alternatives: (toolResult.alternatives || []).map(cleanProp)
+              });
+            }
+
             conversationMessages.push({
               role: 'tool',
               tool_call_id: call.id,
               name: call.name,
-              content: JSON.stringify(toolResult),
+              content: promptToolContent,
             });
           }
 
@@ -351,169 +373,20 @@ export class SalesAgentService {
           last_message_at: new Date().toISOString()
         }).eq('id', conversationId);
 
-        // 11b. Dispatch verified property photos via Fast2SMS if properties were recommended
-        if (discoveredProperties.length > 0) {
-          try {
-            const responseLower = (finalResponseContent || '').toLowerCase();
-            const matchedProperties: any[] = [];
-            const seenIds = new Set<string>();
-
-            // Identify which properties were actually presented/mentioned in final response
-            for (const prop of discoveredProperties) {
-              if (!prop || !prop.id || seenIds.has(prop.id)) continue;
-              const titleMatch = prop.title && responseLower.includes(prop.title.toLowerCase());
-              const nameMatch = prop.name && responseLower.includes(prop.name.toLowerCase());
-              const idMatch = prop.id && responseLower.includes(prop.id.toLowerCase());
-
-              if (titleMatch || nameMatch || idMatch) {
-                seenIds.add(prop.id);
-                matchedProperties.push(prop);
-              }
-            }
-
-            // Fallback: If no direct name match in text, take the top exact match from search
-            if (matchedProperties.length === 0 && discoveredProperties.length > 0) {
-              const topProp = discoveredProperties[0];
-              if (topProp && topProp.id) {
-                matchedProperties.push(topProp);
-                seenIds.add(topProp.id);
-              }
-            }
-
-            // Limit to top 2 properties to keep WhatsApp feed clean and readable (Rule 10)
-            const propertiesToDispatch = matchedProperties.slice(0, 2);
-
-            for (const prop of propertiesToDispatch) {
-              // Rule 13: Mode safety check before each property
-              if (!(await shouldAIRespond(conversationId))) {
-                logger.info({ conversationId, propId: prop.id }, 'Mode switched away from AI; halting media dispatch');
-                break;
-              }
-
-              const images: string[] = Array.isArray(prop.images) ? prop.images : [];
-              if (images.length === 0) {
-                logger.info({ propId: prop.id, title: prop.title || prop.name }, 'No photos available for property; skipping media dispatch without error');
-                continue;
-              }
-
-              // Rule 9: Send 1 to 3 best available photos per property
-              const imagesToSend = images.slice(0, 3);
-
-              for (let i = 0; i < imagesToSend.length; i++) {
-                if (!(await shouldAIRespond(conversationId))) break;
-
-                const imgUrl = imagesToSend[i];
-                // Rule 8: Associate caption with the correct property
-                const caption = i === 0
-                  ? `📸 ${prop.title || prop.name || 'Karjat Property'} · ${prop.location || prop.location_city || 'Karjat'}${prop.priceFormatted ? ' · ' + prop.priceFormatted : ''}`
-                  : undefined;
-
-                let mediaMsgId = `media-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-                try {
-                  logger.info({ conversationId, propId: prop.id, imgUrl }, 'Dispatching property photo via Fast2SMS');
-                  const mediaRes = await whatsappMessageService.sendImage({
-                    to: ctx.conversation.whatsapp_phone,
-                    url: imgUrl,
-                    caption,
-                  });
-                  if (mediaRes?.messageId) mediaMsgId = mediaRes.messageId;
-                } catch (imgErr: any) {
-                  // Rule 11: Failure handling - log and continue with property details, don't crash
-                  logger.error({ error: imgErr.message, propId: prop.id, imgUrl }, 'Failed to dispatch property image via Fast2SMS');
-                  continue;
-                }
-
-                // Record media message in database so it appears in CRM Inbox
-                try {
-                  await messageRepo.createMessage({
-                    conversation_id: conversationId,
-                    whatsapp_message_id: mediaMsgId,
-                    direction: 'outgoing',
-                    message_type: 'image',
-                    recipient_phone: ctx.conversation.whatsapp_phone,
-                    text_content: caption || '',
-                    media_url: imgUrl,
-                    status: 'sent',
-                    sent_at: new Date().toISOString(),
-                  });
-                } catch (dbErr: any) {
-                  logger.warn({ error: dbErr.message }, 'Failed to save media message record');
-                }
-              }
-            }
-
-            // Rule 18 & 19: Check if customer explicitly requested or showed interest in a video walkthrough
-            const customerIncomingText = (ctx.messages[ctx.messages.length - 1]?.content || '').toLowerCase();
-            const responseText = (finalResponseContent || '').toLowerCase();
-            const wantsVideo = 
-              customerIncomingText.includes('video') || 
-              customerIncomingText.includes('clip') || 
-              customerIncomingText.includes('walkthrough') || 
-              customerIncomingText.includes('tour') || 
-              customerIncomingText.includes('video bhejo') || 
-              customerIncomingText.includes('send video') ||
-              responseText.includes('video sent') ||
-              responseText.includes('sharing the walkthrough video');
-
-            if (wantsVideo) {
-              let videoSent = false;
-              for (const prop of propertiesToDispatch) {
-                if (videoSent) break; // Rule 19: Maximum 1 video per turn
-                if (!(await shouldAIRespond(conversationId))) break; // Rule 20: Human mode safety
-
-                const videos: string[] = Array.isArray(prop.videos) ? prop.videos : [];
-                if (videos.length === 0) continue;
-
-                const videoUrl = videos[0];
-                if (!videoUrl || !videoUrl.startsWith('http')) continue; // Rule 21: URL validation
-
-                const caption = `🎥 Verified Walkthrough Video · ${prop.title || prop.name || 'Karjat Property'}`;
-                let videoMsgId = `video-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-                try {
-                  logger.info({ conversationId, propId: prop.id, videoUrl }, 'Dispatching property video via Fast2SMS');
-                  const videoRes = await whatsappMessageService.sendVideo({
-                    to: ctx.conversation.whatsapp_phone,
-                    url: videoUrl,
-                    caption,
-                  });
-                  if (videoRes?.messageId) videoMsgId = videoRes.messageId;
-                  videoSent = true;
-                } catch (videoErr: any) {
-                  logger.error({ error: videoErr.message, propId: prop.id, videoUrl }, 'Failed to dispatch property video via Fast2SMS');
-                  continue;
-                }
-
-                // Record outgoing video message in database for CRM Inbox
-                try {
-                  await messageRepo.createMessage({
-                    conversation_id: conversationId,
-                    whatsapp_message_id: videoMsgId,
-                    direction: 'outgoing',
-                    message_type: 'video',
-                    recipient_phone: ctx.conversation.whatsapp_phone,
-                    text_content: caption,
-                    media_url: videoUrl,
-                    status: 'sent',
-                    sent_at: new Date().toISOString(),
-                  });
-                } catch (dbErr: any) {
-                  logger.warn({ error: dbErr.message }, 'Failed to save video message record');
-                }
-              }
-            }
-          } catch (mediaErr: any) {
-            logger.error({ error: mediaErr.message, conversationId }, 'Unexpected error in property media dispatch loop');
-          }
-        }
-
         // Update State Machine
         await conversationStateMachine.updateConversationState(conversationId, nextState, {
           lastIntent: intents[0],
           confidence,
           lastToolCalled: lastToolCalledName,
         });
+
+        // 11b. Dispatch verified property photos via Fast2SMS asynchronously in background
+        if (discoveredProperties.length > 0) {
+          this.dispatchPropertyMedia(conversationId, ctx, discoveredProperties, finalResponseContent)
+            .catch((mediaErr) => {
+              logger.error({ error: mediaErr.message, conversationId }, 'Unexpected error in background property media dispatch');
+            });
+        }
       } else {
         logger.info({ conversationId }, 'Final check blocked response: Mode switched during execution.');
       }
@@ -529,6 +402,171 @@ export class SalesAgentService {
     } catch (error: any) {
       logger.error({ error: error.message, conversationId }, 'SalesAgentService failed');
       logger.info({ conversationId, duration: Date.now() - startTime, failed: true }, `[PERF] AI_PROCESS_END`);
+    }
+  }
+
+  /**
+   * Dispatches recommended property photos & walkthrough video in the background
+   * without blocking the main conversational text reply.
+   */
+  private async dispatchPropertyMedia(
+    conversationId: string,
+    ctx: any,
+    discoveredProperties: any[],
+    finalResponseContent: string
+  ): Promise<void> {
+    try {
+      const responseLower = (finalResponseContent || '').toLowerCase();
+      const matchedProperties: any[] = [];
+      const seenIds = new Set<string>();
+
+      // Identify which properties were actually presented/mentioned in final response
+      for (const prop of discoveredProperties) {
+        if (!prop || !prop.id || seenIds.has(prop.id)) continue;
+        const titleMatch = prop.title && responseLower.includes(prop.title.toLowerCase());
+        const nameMatch = prop.name && responseLower.includes(prop.name.toLowerCase());
+        const idMatch = prop.id && responseLower.includes(prop.id.toLowerCase());
+
+        if (titleMatch || nameMatch || idMatch) {
+          seenIds.add(prop.id);
+          matchedProperties.push(prop);
+        }
+      }
+
+      // Fallback: If no direct name match in text, take the top exact match from search
+      if (matchedProperties.length === 0 && discoveredProperties.length > 0) {
+        const topProp = discoveredProperties[0];
+        if (topProp && topProp.id) {
+          matchedProperties.push(topProp);
+          seenIds.add(topProp.id);
+        }
+      }
+
+      // Limit to top 2 properties to keep WhatsApp feed clean and readable (Rule 10)
+      const propertiesToDispatch = matchedProperties.slice(0, 2);
+
+      for (const prop of propertiesToDispatch) {
+        // Rule 13: Mode safety check before each property
+        if (!(await shouldAIRespond(conversationId))) {
+          logger.info({ conversationId, propId: prop.id }, 'Mode switched away from AI; halting media dispatch');
+          break;
+        }
+
+        const images: string[] = Array.isArray(prop.images) ? prop.images : [];
+        if (images.length === 0) {
+          logger.info({ propId: prop.id, title: prop.title || prop.name }, 'No photos available for property; skipping media dispatch without error');
+          continue;
+        }
+
+        // Rule 9: Send 1 to 3 best available photos per property
+        const imagesToSend = images.slice(0, 3);
+
+        for (let i = 0; i < imagesToSend.length; i++) {
+          if (!(await shouldAIRespond(conversationId))) break;
+
+          const imgUrl = imagesToSend[i];
+          // Rule 8: Associate caption with the correct property
+          const caption = i === 0
+            ? `📸 ${prop.title || prop.name || 'Karjat Property'} · ${prop.location || prop.location_city || 'Karjat'}${prop.priceFormatted ? ' · ' + prop.priceFormatted : ''}`
+            : undefined;
+
+          let mediaMsgId = `media-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+          try {
+            logger.info({ conversationId, propId: prop.id, imgUrl }, 'Dispatching property photo via Fast2SMS');
+            const mediaRes = await whatsappMessageService.sendImage({
+              to: ctx.conversation.whatsapp_phone,
+              url: imgUrl,
+              caption,
+            });
+            if (mediaRes?.messageId) mediaMsgId = mediaRes.messageId;
+          } catch (imgErr: any) {
+            // Rule 11: Failure handling - log and continue with property details, don't crash
+            logger.error({ error: imgErr.message, propId: prop.id, imgUrl }, 'Failed to dispatch property image via Fast2SMS');
+            continue;
+          }
+
+          // Record media message in database so it appears in CRM Inbox
+          try {
+            await messageRepo.createMessage({
+              conversation_id: conversationId,
+              whatsapp_message_id: mediaMsgId,
+              direction: 'outgoing',
+              message_type: 'image',
+              recipient_phone: ctx.conversation.whatsapp_phone,
+              text_content: caption || '',
+              media_url: imgUrl,
+              status: 'sent',
+              sent_at: new Date().toISOString(),
+            });
+          } catch (dbErr: any) {
+            logger.warn({ error: dbErr.message }, 'Failed to save media message record');
+          }
+        }
+      }
+
+      // Rule 18 & 19: Check if customer explicitly requested or showed interest in a video walkthrough
+      const customerIncomingText = (ctx.messages[ctx.messages.length - 1]?.content || '').toLowerCase();
+      const responseText = (finalResponseContent || '').toLowerCase();
+      const wantsVideo = 
+        customerIncomingText.includes('video') || 
+        customerIncomingText.includes('clip') || 
+        customerIncomingText.includes('walkthrough') || 
+        customerIncomingText.includes('tour') || 
+        customerIncomingText.includes('video bhejo') || 
+        customerIncomingText.includes('send video') ||
+        responseText.includes('video sent') ||
+        responseText.includes('sharing the walkthrough video');
+
+      if (wantsVideo) {
+        let videoSent = false;
+        for (const prop of propertiesToDispatch) {
+          if (videoSent) break; // Rule 19: Maximum 1 video per turn
+          if (!(await shouldAIRespond(conversationId))) break; // Rule 20: Human mode safety
+
+          const videos: string[] = Array.isArray(prop.videos) ? prop.videos : [];
+          if (videos.length === 0) continue;
+
+          const videoUrl = videos[0];
+          if (!videoUrl || !videoUrl.startsWith('http')) continue; // Rule 21: URL validation
+
+          const caption = `🎥 Verified Walkthrough Video · ${prop.title || prop.name || 'Karjat Property'}`;
+          let videoMsgId = `video-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+          try {
+            logger.info({ conversationId, propId: prop.id, videoUrl }, 'Dispatching property video via Fast2SMS');
+            const videoRes = await whatsappMessageService.sendVideo({
+              to: ctx.conversation.whatsapp_phone,
+              url: videoUrl,
+              caption,
+            });
+            if (videoRes?.messageId) videoMsgId = videoRes.messageId;
+            videoSent = true;
+          } catch (videoErr: any) {
+            logger.error({ error: videoErr.message, propId: prop.id, videoUrl }, 'Failed to dispatch property video via Fast2SMS');
+            continue;
+          }
+
+          // Record outgoing video message in database for CRM Inbox
+          try {
+            await messageRepo.createMessage({
+              conversation_id: conversationId,
+              whatsapp_message_id: videoMsgId,
+              direction: 'outgoing',
+              message_type: 'video',
+              recipient_phone: ctx.conversation.whatsapp_phone,
+              text_content: caption,
+              media_url: videoUrl,
+              status: 'sent',
+              sent_at: new Date().toISOString(),
+            });
+          } catch (dbErr: any) {
+            logger.warn({ error: dbErr.message }, 'Failed to save video message record');
+          }
+        }
+      }
+    } catch (mediaErr: any) {
+      logger.error({ error: mediaErr.message, conversationId }, 'Unexpected error in property media dispatch loop');
     }
   }
 

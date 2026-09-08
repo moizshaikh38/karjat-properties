@@ -1,6 +1,7 @@
 import * as propertyRepo from '../repositories/propertyRepository';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors';
 import { logger } from '../utils/logger';
+import { invalidatePropertiesCache } from './propertyMatchingService';
 import {
   CreatePropertyInput,
   UpdatePropertyInput,
@@ -32,11 +33,14 @@ export const createProperty = async (input: CreatePropertyInput): Promise<Proper
     );
   }
 
-  return propertyRepo.createProperty({
+  const created = await propertyRepo.createProperty({
     ...input,
     property_code: propertyCode,
     location,
   });
+
+  invalidatePropertiesCache();
+  return created;
 };
 
 // ==========================================
@@ -82,6 +86,7 @@ export const updateProperty = async (id: string, input: UpdatePropertyInput): Pr
     propertyRepo.getPropertyAmenities(id),
   ]);
 
+  invalidatePropertiesCache();
   return {
     ...updated,
     media,
@@ -107,6 +112,7 @@ export const deleteProperty = async (id: string, permanent: boolean = false): Pr
     await propertyRepo.updatePropertyStatus(id, 'inactive');
     logger.info({ propertyId: id }, 'Property deactivated');
   }
+  invalidatePropertiesCache();
 };
 
 // ==========================================
@@ -129,6 +135,7 @@ export const updateStatus = async (id: string, status: PropertyStatus): Promise<
     propertyRepo.getPropertyAmenities(id),
   ]);
 
+  invalidatePropertiesCache();
   return {
     ...updated,
     media,

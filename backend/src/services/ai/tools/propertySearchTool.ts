@@ -38,7 +38,7 @@ export const propertySearchToolDefinition: AITool = {
   }
 };
 
-export const executePropertySearch = async (leadId: string, args: any = {}) => {
+export const executePropertySearch = async (leadId: string, args: any = {}, existingRequirements?: any) => {
   try {
     const { exactMatches, alternatives, requirements } = await findMatchingProperties(leadId, {
       bhk: args.bhk,
@@ -47,7 +47,8 @@ export const executePropertySearch = async (leadId: string, args: any = {}) => {
       min_price: args.min_price,
       location: args.location,
       property_type: args.property_type,
-      limit: 3
+      limit: 3,
+      existingRequirements
     });
     
     return {
