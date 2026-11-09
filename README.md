@@ -1,63 +1,57 @@
-# Karjat Properties AI - Backend
+# Karjat Properties AI
 
-## Purpose
-This is the backend foundation for Karjat Properties, an AI-powered real estate automation and CRM system. It handles core API functionality, database interactions, authentication, and integrations with services like WhatsApp Business API and AI services.
+AI-powered real estate lead management and WhatsApp automation for Karjat Properties: a Node.js/TypeScript API with a React admin frontend.
 
-## Architecture
-This project follows clean architecture principles with a modular design, enabling easier scalability and maintainability:
-- **Controllers**: Handle HTTP requests and responses.
-- **Services**: Contain the core business logic.
-- **Repositories**: Handle database interactions.
-- **Middleware**: Intercept requests for authentication, validation, error handling, etc.
-- **Config**: Manage environment variables and configuration.
-- **Routes**: Define API endpoints.
-- **Schemas**: Define Zod schemas for request validation.
+## Repository layout
+
+- `backend/`: Express + TypeScript API (PostgreSQL via `pg`, Supabase JS, JWT auth, Zod validation, Pino logging, image uploads with Multer and Sharp).
+- `frontend/`: React + Vite + TypeScript admin UI (React Router, Axios, date-fns, lucide-react).
+- `database/`: `complete_setup.sql`, plus `migrations/` and `seed/`.
+- `docs/`: API and feature notes (auth, properties, WhatsApp, Fast2SMS, AI conversation brain, AI sales agent, lead management and scoring, follow-up engine, campaigns, analytics, database).
+- `render.yaml`: Render web service definition for the backend (`rootDir: backend`).
+
+Architecture of the backend: routes and controllers, services for business logic, repositories for database access, middleware, config and Zod schemas.
 
 ## Prerequisites
-- Node.js (v18+)
-- npm
-- PostgreSQL
-- Supabase account (optional, for backend services like Storage)
 
-## Setup & Installation
+- Node.js 18 or newer and npm
+- PostgreSQL (see `database/complete_setup.sql`) and a Supabase project
+- Optional: WhatsApp Business API credentials and an AI provider key for those features
 
-1. Clone the repository and navigate to the backend folder:
-   ```bash
-   cd karjat-properties-ai/backend
-   ```
+## Backend
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Setup environment variables:
-   Copy `.env.example` to `.env` and fill in the required values.
-   ```bash
-   cp .env.example .env
-   ```
-
-## Development Server
-To start the development server with live reload:
 ```bash
+cd backend
+npm install
+cp .env.example .env     # fill in your own values
+npm run dev              # tsx watch server.ts
+```
+
+Other scripts: `npm run build` (tsc), `npm start` (`node dist/server.js`), `npm run lint`, `npm test` (vitest). Health check: `GET /api/health`. The port comes from `PORT` in `.env`.
+
+## Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env     # sets VITE_API_BASE_URL
 npm run dev
 ```
-The server will run at `http://localhost:7000`.
 
-## Production Build
-To build the project for production:
-```bash
-npm run build
-```
-To run the production build:
-```bash
-npm run start
-```
+Other scripts: `npm run build`, `npm run lint` (oxlint), `npm test` (vitest), `npm run preview`.
 
-## Available API Endpoints
+## Environment variables
 
-### Health Check
-- `GET /api/health`: Returns the health status of the API.
+Names only, see `backend/.env.example` and `frontend/.env.example`:
 
-## Next Steps
-Future iterations will introduce WhatsApp API integration, AI-powered chatbots, property management, and CRM functionalities.
+- Core: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `FRONTEND_URL`
+- WhatsApp: `WHATSAPP_API_VERSION`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`
+- AI: `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, `AI_TEMPERATURE`, `AI_MAX_TOKENS`, `AI_CONTEXT_MESSAGES`, `AI_MAX_CONSECUTIVE_FAILURES`
+- Follow-ups: `FOLLOWUP_ENABLED`, `FOLLOWUP_POLL_INTERVAL_SECONDS`, `FOLLOWUP_BATCH_SIZE`, `FOLLOWUP_MAX_PER_LEAD`, `FOLLOWUP_MIN_GAP_HOURS`, `FOLLOWUP_BUSINESS_START_HOUR`, `FOLLOWUP_BUSINESS_END_HOUR`, `FOLLOWUP_TIMEZONE`
+- Frontend: `VITE_API_BASE_URL`
+
+Never commit real values. `SUPABASE_SERVICE_ROLE_KEY` and other secrets are server-side only.
+
+## License
+
+No license has been granted for this repository. Contact the repository owner for permission to use the code.
