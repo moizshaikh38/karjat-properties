@@ -54,4 +54,4 @@ Never commit real values. `SUPABASE_SERVICE_ROLE_KEY` and other secrets are serv
 
 ## License
 
-No license has been granted for this repository. Contact the repository owner for permission to use the code.
+There is no `LICENSE` file in this repository. `backend/package.json` declares `ISC`, which is npm's default value; the owner has not confirmed a project license. Third-party dependencies keep their own licenses. Contact the repository owner about use of the code.
