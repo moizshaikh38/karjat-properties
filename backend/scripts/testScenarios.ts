@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xlngkqmxeteyaiyvpodt.supabase.co';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsbmdrcW14ZXRleWFpeXZwb2R0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODM0NjcwNCwiZXhwIjoyMTAzOTIyNzA0fQ.HKlaVBRcy7pEh9RjJeHccK0rkC0hOzBQPl2EFi4xRrI';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY before running test scenarios.');
+}
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const WEBHOOK_URL = 'http://localhost:3000/api/webhooks/fast2sms/whatsapp';
